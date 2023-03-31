@@ -277,17 +277,16 @@ bool VelodyneDriverCore::poll(void)
 
   // Since the velodyne delivers data at a very high rate, keep
   // reading and publishing scans as fast as possible.
-  uint16_t packet_first_azm = 0;
-  uint16_t packet_first_azm_phased = 0;
-  uint16_t packet_last_azm = 0;
-  uint16_t packet_last_azm_phased = 0;
-  uint16_t prev_packet_first_azm_phased = 0;
+//  uint16_t packet_first_azm = 0;
+//  uint16_t packet_first_azm_phased = 0;
+//  uint16_t packet_last_azm = 0;
+//  uint16_t packet_last_azm_phased = 0;
+//  uint16_t prev_packet_first_azm_phased = 0;
 
-  uint16_t phase = (uint16_t)round(config_.scan_phase*100);
+//  uint16_t phase = (uint16_t)round(config_.scan_phase*100);
   bool use_next_packet = true;
   uint processed_packets = 0;
 
-  const rclcpp::Time scan_start_time = node_ptr_->now();
   while (use_next_packet && rclcpp::ok())
   {
     while (rclcpp::ok())
@@ -303,11 +302,11 @@ bool VelodyneDriverCore::poll(void)
     processed_packets++;
 
     // uint8_t  curr_packet_rmode;
-    packet_first_azm  = scan->packets.back().data[2]; // lower word of azimuth block 0
-    packet_first_azm |= scan->packets.back().data[3] << 8; // higher word of azimuth block 0
+//    packet_first_azm  = scan->packets.back().data[2]; // lower word of azimuth block 0
+//    packet_first_azm |= scan->packets.back().data[3] << 8; // higher word of azimuth block 0
 
-    packet_last_azm = scan->packets.back().data[1102];
-    packet_last_azm |= scan->packets.back().data[1103] << 8;
+//    packet_last_azm = scan->packets.back().data[1102];
+//    packet_last_azm |= scan->packets.back().data[1103] << 8;
 
     // curr_packet_rmode = scan->packets.back().data[1204];
     // curr_packet_sensor_model = scan->packets.back().data[1205];
@@ -318,11 +317,13 @@ bool VelodyneDriverCore::poll(void)
     // NOTE: this also works for dual echo mode because the last blank data block
     // still contains azimuth data (for VLS128). This should be modified in future
     // to concretely handle blank data blocks.
-    packet_first_azm_phased = (36000 + packet_first_azm - phase) % 36000;
-    packet_last_azm_phased = (36000 + packet_last_azm - phase) % 36000;
+//    packet_first_azm_phased = (36000 + packet_first_azm - phase) % 36000;
+//    packet_last_azm_phased = (36000 + packet_last_azm - phase) % 36000;
     if (processed_packets > 1)
     {
-      const rclcpp::Duration duration = node_ptr_->now() - scan_start_time;
+      const rclcpp::Time first_arrived_time(scan->packets.front().stamp);
+      const rclcpp::Time last_arrived_time(scan->packets.back().stamp);
+      const rclcpp::Duration duration = last_arrived_time - first_arrived_time;
       if(duration >= *scan_period_)
       {
         use_next_packet = false;
@@ -334,7 +335,7 @@ bool VelodyneDriverCore::poll(void)
 //      }
 
     }
-    prev_packet_first_azm_phased = packet_first_azm_phased;
+//    prev_packet_first_azm_phased = packet_first_azm_phased;
   }
 
   // average the time stamp from first package and last package
