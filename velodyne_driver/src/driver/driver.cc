@@ -210,6 +210,9 @@ VelodyneDriverCore::VelodyneDriverCore(rclcpp::Node * node_ptr)
   RCLCPP_INFO_STREAM(node_ptr_->get_logger(), deviceName << " rotating at " << config_.rpm << " RPM");
   double frequency = (config_.rpm / 60.0);     // expected Hz rate
 
+  scan_period_ = std::make_unique<rclcpp::Duration>(0, static_cast<uint32_t>(1/frequency * pow(10,9)));
+  RCLCPP_INFO_STREAM(node_ptr_->get_logger(), "Scan period: " << scan_period_->nanoseconds() << " nanoseconds");
+
   config_.scan_phase = node_ptr_->declare_parameter("scan_phase", 0.0);
   config_.scan_phase = node_ptr_->get_parameter("scan_phase").as_double();
   RCLCPP_INFO_STREAM(node_ptr_->get_logger(), "Scan start/end will be at a phase of " << config_.scan_phase  << " degrees");
@@ -283,6 +286,8 @@ bool VelodyneDriverCore::poll(void)
   uint16_t phase = (uint16_t)round(config_.scan_phase*100);
   bool use_next_packet = true;
   uint processed_packets = 0;
+
+  const rclcpp::Time scan_start_time = node_ptr_->now();
   while (use_next_packet && rclcpp::ok())
   {
     while (rclcpp::ok())
@@ -317,10 +322,17 @@ bool VelodyneDriverCore::poll(void)
     packet_last_azm_phased = (36000 + packet_last_azm - phase) % 36000;
     if (processed_packets > 1)
     {
-      if (packet_last_azm_phased < packet_first_azm_phased || packet_first_azm_phased < prev_packet_first_azm_phased)
+      const rclcpp::Duration duration = node_ptr_->now() - scan_start_time;
+      if(duration >= *scan_period_)
       {
         use_next_packet = false;
       }
+
+//      if (packet_last_azm_phased < packet_first_azm_phased || packet_first_azm_phased < prev_packet_first_azm_phased)
+//      {
+//        use_next_packet = false;
+//      }
+
     }
     prev_packet_first_azm_phased = packet_first_azm_phased;
   }
