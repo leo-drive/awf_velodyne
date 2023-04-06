@@ -71,7 +71,7 @@ private:
   // uint8_t  curr_packet_sensor_model; // extract the sensor id from packet
   std::string dump_file; // string to hold pcap file name
 
-  std::unique_ptr<rclcpp::Duration> scan_period_;
+//  std::unique_ptr<rclcpp::Duration> scan_period_;
 };
 
 } // namespace velodyne_driver

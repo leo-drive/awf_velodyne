@@ -19,6 +19,7 @@
   <arg name="repeat_delay" default="0.0" />
   <arg name="rpm" default="600.0" />
   <arg name="scan_phase" default="0.0" />
+  <arg name="scan_period" default="100000000" />
   <arg name="sensor_timestamp" default="false" />
   <arg name="laserscan_ring" default="-1" />
   <arg name="laserscan_resolution" default="0.007" />
@@ -50,6 +51,7 @@
     <arg name="num_points_threshold" value="$(var num_points_threshold)"/>
     <arg name="invalid_intensity" value="$(var invalid_intensity)"/>
     <arg name="scan_phase" value="$(var scan_phase)"/>
+    <arg name="scan_period" value="$(var scan_period)"/>
   </include>
 
 </launch>

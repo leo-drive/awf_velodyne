@@ -9,6 +9,7 @@
   <arg name="num_points_threshold" default="300"/>
   <arg name="invalid_intensity" default="[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]"/>
   <arg name="scan_phase" default="0.0"/>
+  <arg name="scan_period" default="100000000"/>
 
   <node pkg="velodyne_pointcloud" exec="cloud_node" name="$(var manager)_cloud">
     <param name="calibration" value="$(var calibration)"/>
@@ -17,5 +18,6 @@
     <param name="num_points_threshold" value="$(var num_points_threshold)"/>
     <param name="invalid_intensity" value="$(var invalid_intensity)"/>
     <param name="scan_phase" value="$(var scan_phase)"/>
+    <param name="scan_period" value="$(var scan_period)"/>
   </node>
 </launch>

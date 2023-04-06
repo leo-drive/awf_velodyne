@@ -120,6 +120,10 @@ Convert::Convert(const rclcpp::NodeOptions & options)
   scan_phase_desc.floating_point_range.push_back(scan_phase_range);
   config_.scan_phase = this->declare_parameter("scan_phase", 0.0, scan_phase_desc);
 
+  const int scan_period = this->declare_parameter("scan_period", 100000000);
+  config_.scan_period = std::make_unique<rclcpp::Duration>(0, scan_period);
+  RCLCPP_INFO_STREAM(this->get_logger(), "Scan period: " << config_.scan_period->nanoseconds() << " ns.");
+
   RCLCPP_INFO(this->get_logger(), "correction angles: %s", calibration_file.c_str());
 
   data_->setup();
@@ -213,6 +217,15 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
       output_builder.addPoint(point.x, point.y, point.z, point.return_type,
           point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
     }
+
+    rclcpp::Time first_arrived_time;
+    if (_overflow_buffer.pc->empty()) {
+      first_arrived_time = rclcpp::Time(scanMsg->header.stamp);
+    }
+    else {
+      first_arrived_time = rclcpp::Time(static_cast<uint32_t>(_overflow_buffer.pc->points.front().time_stamp * pow(10,9)));
+    }
+
     // Reset overflow buffer
     _overflow_buffer.pc->points.clear();
     _overflow_buffer.pc->width = 0;
@@ -229,20 +242,26 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     data_->unpack(scanMsg->packets.back(), last_packet_points);
 
     // If it's a partial scan, put all points in the main pointcloud
-    int phase = (uint16_t)round(config_.scan_phase*100);
-    bool keep_all = false;
-    uint16_t last_packet_last_phase = (36000 + (uint16_t)last_packet_points.pc->points.back().azimuth - phase) % 36000;
-    uint16_t body_packets_last_phase = (36000 + (uint16_t)output_builder.last_azimuth - phase) % 36000;
+//    int phase = (uint16_t)round(config_.scan_phase*100);
+//    bool keep_all = false;
+//    uint16_t last_packet_last_phase = (36000 + (uint16_t)last_packet_points.pc->points.back().azimuth - phase) % 36000;
+//    uint16_t body_packets_last_phase = (36000 + (uint16_t)output_builder.last_azimuth - phase) % 36000;
 
-    if (body_packets_last_phase < last_packet_last_phase) {
-      keep_all = true;
-    }
+    const rclcpp::Time last_arrived_time(
+      static_cast<uint32_t>(last_packet_points.pc->points.back().time_stamp * pow(10, 9)),
+      first_arrived_time.get_clock_type());
+    const rclcpp::Duration duration = last_arrived_time - first_arrived_time;
+
+//    if (body_packets_last_phase < last_packet_last_phase) {
+//      keep_all = true;
+//    }
 
     // If it's a split packet, distribute to overflow buffer or main pointcloud based on azimuth
     for (size_t i = 0; i < last_packet_points.pc->points.size(); ++i) {
-      uint16_t current_azimuth = (uint16_t)last_packet_points.pc->points[i].azimuth;
-      uint16_t phase_diff = (36000 + current_azimuth - phase) % 36000;
-      if ((phase_diff > 18000) || keep_all) {
+//      uint16_t current_azimuth = (uint16_t)last_packet_points.pc->points[i].azimuth;
+//      uint16_t phase_diff = (36000 + current_azimuth - phase) % 36000;
+//      if ((phase_diff > 18000) || keep_all) {
+      if (duration < *config_.scan_period) {
         auto &point = last_packet_points.pc->points[i];
         output_builder.addPoint(point.x, point.y, point.z, point.return_type,
             point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);

@@ -210,8 +210,8 @@ VelodyneDriverCore::VelodyneDriverCore(rclcpp::Node * node_ptr)
   RCLCPP_INFO_STREAM(node_ptr_->get_logger(), deviceName << " rotating at " << config_.rpm << " RPM");
   double frequency = (config_.rpm / 60.0);     // expected Hz rate
 
-  scan_period_ = std::make_unique<rclcpp::Duration>(0, static_cast<uint32_t>(1/frequency * pow(10,9)));
-  RCLCPP_INFO_STREAM(node_ptr_->get_logger(), "Scan period: " << scan_period_->nanoseconds() << " nanoseconds");
+//  scan_period_ = std::make_unique<rclcpp::Duration>(0, static_cast<uint32_t>(1/frequency * pow(10,9)));
+//  RCLCPP_INFO_STREAM(node_ptr_->get_logger(), "Scan period: " << scan_period_->nanoseconds() << " nanoseconds");
 
   config_.scan_phase = node_ptr_->declare_parameter("scan_phase", 0.0);
   config_.scan_phase = node_ptr_->get_parameter("scan_phase").as_double();
@@ -277,13 +277,13 @@ bool VelodyneDriverCore::poll(void)
 
   // Since the velodyne delivers data at a very high rate, keep
   // reading and publishing scans as fast as possible.
-//  uint16_t packet_first_azm = 0;
-//  uint16_t packet_first_azm_phased = 0;
-//  uint16_t packet_last_azm = 0;
-//  uint16_t packet_last_azm_phased = 0;
-//  uint16_t prev_packet_first_azm_phased = 0;
+  uint16_t packet_first_azm = 0;
+  uint16_t packet_first_azm_phased = 0;
+  uint16_t packet_last_azm = 0;
+  uint16_t packet_last_azm_phased = 0;
+  uint16_t prev_packet_first_azm_phased = 0;
 
-//  uint16_t phase = (uint16_t)round(config_.scan_phase*100);
+  uint16_t phase = (uint16_t)round(config_.scan_phase*100);
   bool use_next_packet = true;
   uint processed_packets = 0;
 
@@ -302,11 +302,11 @@ bool VelodyneDriverCore::poll(void)
     processed_packets++;
 
     // uint8_t  curr_packet_rmode;
-//    packet_first_azm  = scan->packets.back().data[2]; // lower word of azimuth block 0
-//    packet_first_azm |= scan->packets.back().data[3] << 8; // higher word of azimuth block 0
+    packet_first_azm  = scan->packets.back().data[2]; // lower word of azimuth block 0
+    packet_first_azm |= scan->packets.back().data[3] << 8; // higher word of azimuth block 0
 
-//    packet_last_azm = scan->packets.back().data[1102];
-//    packet_last_azm |= scan->packets.back().data[1103] << 8;
+    packet_last_azm = scan->packets.back().data[1102];
+    packet_last_azm |= scan->packets.back().data[1103] << 8;
 
     // curr_packet_rmode = scan->packets.back().data[1204];
     // curr_packet_sensor_model = scan->packets.back().data[1205];
@@ -317,31 +317,26 @@ bool VelodyneDriverCore::poll(void)
     // NOTE: this also works for dual echo mode because the last blank data block
     // still contains azimuth data (for VLS128). This should be modified in future
     // to concretely handle blank data blocks.
-//    packet_first_azm_phased = (36000 + packet_first_azm - phase) % 36000;
-//    packet_last_azm_phased = (36000 + packet_last_azm - phase) % 36000;
+    packet_first_azm_phased = (36000 + packet_first_azm - phase) % 36000;
+    packet_last_azm_phased = (36000 + packet_last_azm - phase) % 36000;
     if (processed_packets > 1)
     {
-      const rclcpp::Time first_arrived_time(scan->packets.front().stamp);
-      const rclcpp::Time last_arrived_time(scan->packets.back().stamp);
-      const rclcpp::Duration duration = last_arrived_time - first_arrived_time;
-      if(duration >= *scan_period_)
-      {
-        use_next_packet = false;
-      }
-
-//      if (packet_last_azm_phased < packet_first_azm_phased || packet_first_azm_phased < prev_packet_first_azm_phased)
+//      const rclcpp::Time first_arrived_time(scan->packets.front().stamp);
+//      const rclcpp::Time last_arrived_time(scan->packets.back().stamp);
+//      const rclcpp::Duration duration = last_arrived_time - first_arrived_time;
+//      if(duration >= *scan_period_)
 //      {
 //        use_next_packet = false;
 //      }
 
-    }
-//    prev_packet_first_azm_phased = packet_first_azm_phased;
-  }
+      if (packet_last_azm_phased < packet_first_azm_phased || packet_first_azm_phased < prev_packet_first_azm_phased)
+      {
+        use_next_packet = false;
+      }
 
-  // average the time stamp from first package and last package
-  rclcpp::Time firstTimeStamp = scan->packets.front().stamp;
-  rclcpp::Time lastTimeStamp = scan->packets.back().stamp;
-  rclcpp::Time  meanTimeStamp = firstTimeStamp + (lastTimeStamp - firstTimeStamp) * 0.5;
+    }
+    prev_packet_first_azm_phased = packet_first_azm_phased;
+  }
 
   // publish message using time of first packet read
   RCLCPP_DEBUG(node_ptr_->get_logger(), "Publishing a full Velodyne scan.");

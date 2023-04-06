@@ -88,6 +88,7 @@ private:
     int npackets;               ///< number of packets to combine
     double scan_phase;        ///< sensor phase (degrees)
     bool sensor_timestamp;      ///< flag on whether to use sensor (GPS) time or ROS receive time
+    std::unique_ptr<rclcpp::Duration> scan_period;
   } Config;
   Config config_;
 };
