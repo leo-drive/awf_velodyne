@@ -261,7 +261,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 //      uint16_t current_azimuth = (uint16_t)last_packet_points.pc->points[i].azimuth;
 //      uint16_t phase_diff = (36000 + current_azimuth - phase) % 36000;
 //      if ((phase_diff > 18000) || keep_all) {
-      if (duration < *config_.scan_period) {
+      if (duration >= *config_.scan_period) {
         auto &point = last_packet_points.pc->points[i];
         output_builder.addPoint(point.x, point.y, point.z, point.return_type,
             point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
