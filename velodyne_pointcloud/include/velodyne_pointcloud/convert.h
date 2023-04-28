@@ -91,6 +91,8 @@ private:
     std::unique_ptr<rclcpp::Duration> scan_period;
   } Config;
   Config config_;
+
+  std::optional<rclcpp::Time> next_pub_time_;
 };
 
 }  // namespace velodyne_pointcloud

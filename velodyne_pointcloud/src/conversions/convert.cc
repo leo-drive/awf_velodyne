@@ -203,6 +203,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 {
   bool activate_xyziradt = velodyne_points_ex_pub_->get_subscription_count() > 0;
   bool activate_xyzir = velodyne_points_pub_->get_subscription_count() > 0;
+  bool is_pub_time{false};
 
   velodyne_pointcloud::OutputBuilder output_builder(
       scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size(), *scanMsg,
@@ -218,13 +219,22 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
           point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
     }
 
-    rclcpp::Time first_arrived_time;
-    if (_overflow_buffer.pc->empty()) {
-      first_arrived_time = rclcpp::Time(scanMsg->header.stamp);
+    // Hold the time when the first packet has arrived
+    if (!next_pub_time_.has_value()) {
+      const rcl_time_point_value_t current_time{this->now().nanoseconds()};
+      const auto time_in_millisec{current_time / 100000000};
+      auto next_pub_time{(time_in_millisec % 10) + 1};
+      if (next_pub_time % 2 != 0) {
+        ++next_pub_time;
+      }
+      next_pub_time *= 100000000;
+      const auto time_last_part{current_time - ((current_time / 1000000000) * 1000000000)};
+      next_pub_time += (current_time - time_last_part);
+      next_pub_time_.emplace(next_pub_time, this->get_clock()->get_clock_type());
     }
-    else {
-      first_arrived_time = rclcpp::Time(static_cast<uint32_t>(_overflow_buffer.pc->points.front().time_stamp * pow(10,9)));
-    }
+
+//    RCLCPP_INFO_STREAM(this->get_logger(), "Curr:\t" << this->now().nanoseconds() << '\n');
+//    RCLCPP_WARN_STREAM(this->get_logger(), "Next:\t" << next_pub_time_->nanoseconds() << '\n');
 
     // Reset overflow buffer
     _overflow_buffer.pc->points.clear();
@@ -247,11 +257,6 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 //    uint16_t last_packet_last_phase = (36000 + (uint16_t)last_packet_points.pc->points.back().azimuth - phase) % 36000;
 //    uint16_t body_packets_last_phase = (36000 + (uint16_t)output_builder.last_azimuth - phase) % 36000;
 
-    const rclcpp::Time last_arrived_time(
-      static_cast<uint32_t>(last_packet_points.pc->points.back().time_stamp * pow(10, 9)),
-      first_arrived_time.get_clock_type());
-    const rclcpp::Duration duration = last_arrived_time - first_arrived_time;
-
 //    if (body_packets_last_phase < last_packet_last_phase) {
 //      keep_all = true;
 //    }
@@ -261,13 +266,21 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 //      uint16_t current_azimuth = (uint16_t)last_packet_points.pc->points[i].azimuth;
 //      uint16_t phase_diff = (36000 + current_azimuth - phase) % 36000;
 //      if ((phase_diff > 18000) || keep_all) {
-      if (duration >= *config_.scan_period) {
+      if (this->now() >= *next_pub_time_) {
         auto &point = last_packet_points.pc->points[i];
         output_builder.addPoint(point.x, point.y, point.z, point.return_type,
             point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
+
+        is_pub_time = true;
+
       } else {
         _overflow_buffer.pc->points.push_back(last_packet_points.pc->points[i]);
       }
+    }
+
+    if (is_pub_time){
+      const rclcpp::Duration hundred_ms{0, 100000000};
+      *next_pub_time_ += hundred_ms;
     }
 
     last_packet_points.pc->points.clear();
@@ -278,11 +291,11 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
   }
 
 
-  if (output_builder.xyzir_is_activated()) {
+  if (output_builder.xyzir_is_activated() && is_pub_time) {
     velodyne_points_pub_->publish(output_builder.move_xyzir_output());
   }
 
-  if (output_builder.xyziradt_is_activated()) {
+  if (output_builder.xyziradt_is_activated() && is_pub_time) {
     velodyne_points_ex_pub_->publish(output_builder.move_xyziradt_output());
   }
 
