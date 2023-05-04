@@ -120,9 +120,10 @@ Convert::Convert(const rclcpp::NodeOptions & options)
   scan_phase_desc.floating_point_range.push_back(scan_phase_range);
   config_.scan_phase = this->declare_parameter("scan_phase", 0.0, scan_phase_desc);
 
-  const int scan_period = this->declare_parameter("scan_period", 100000000);
-  config_.scan_period = std::make_unique<rclcpp::Duration>(0, scan_period);
-  RCLCPP_INFO_STREAM(this->get_logger(), "Scan period: " << config_.scan_period->nanoseconds() << " ns.");
+  const long scan_period = this->declare_parameter("scan_period", 100);
+  config_.scan_period = std::make_unique<rclcpp::Duration>(std::chrono::milliseconds(scan_period));
+  RCLCPP_INFO_STREAM(
+    this->get_logger(), "Scan period: " << config_.scan_period->to_chrono<std::chrono::milliseconds>().count() << " ms.");
 
   RCLCPP_INFO(this->get_logger(), "correction angles: %s", calibration_file.c_str());
 
@@ -152,6 +153,8 @@ Convert::Convert(const rclcpp::NodeOptions & options)
     this->create_subscription<velodyne_msgs::msg::VelodyneScan>(
     "velodyne_packets", rclcpp::SensorDataQoS(),
     std::bind(&Convert::processScan, this, std::placeholders::_1));
+
+  pub_thread_ = std::thread(&Convert::periodicPublish, this);
 }
 
 rcl_interfaces::msg::SetParametersResult Convert::paramCallback(const std::vector<rclcpp::Parameter> & p)
@@ -203,105 +206,56 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 {
   bool activate_xyziradt = velodyne_points_ex_pub_->get_subscription_count() > 0;
   bool activate_xyzir = velodyne_points_pub_->get_subscription_count() > 0;
-  bool is_pub_time{false};
 
-  velodyne_pointcloud::OutputBuilder output_builder(
-      scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size(), *scanMsg,
-      activate_xyziradt, activate_xyzir);
-
-  output_builder.set_extract_range(data_->getMinRange(), data_->getMaxRange());
+  // Recreate buffer after publishing the cloud.
+  if (is_published_) {
+    point_buffer_ = std::make_shared<velodyne_pointcloud::ThreadSafeCloud>("velodyne");
+    is_published_ = false;
+  }
 
   if (activate_xyziradt || activate_xyzir) {
-    // Add the overflow buffer points
-    for (size_t i = 0; i < _overflow_buffer.pc->points.size(); ++i) {
-      auto &point = _overflow_buffer.pc->points[i];
-      output_builder.addPoint(point.x, point.y, point.z, point.return_type,
-          point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
-    }
-
-    // Hold the time when the first packet has arrived
+    // Hold the time when the first packet has arrived.
     if (!next_pub_time_.has_value()) {
-      const rcl_time_point_value_t current_time{this->now().nanoseconds()};
-      const auto time_in_millisec{current_time / 100000000};
-      auto next_pub_time{(time_in_millisec % 10) + 1};
-      if (next_pub_time % 2 != 0) {
-        ++next_pub_time;
-      }
-      next_pub_time *= 100000000;
-      const auto time_last_part{current_time - ((current_time / 1000000000) * 1000000000)};
-      next_pub_time += (current_time - time_last_part);
-      next_pub_time_.emplace(next_pub_time, this->get_clock()->get_clock_type());
+      // Self-sync nodes.
+      // Get the current timestamp.
+      const auto time_in_nanosec = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count();
+      const auto next_pub_time = ((time_in_nanosec / 100000000) % 10 + 1) * 100000000;
+      // Make it even number so that all nodes will have next even time. Bitwise operation is used
+      // to prevent branching with if condition.
+      const auto next_pub_time_even = (next_pub_time + 1) & ~1;
+      const auto pub_time = time_in_nanosec - (time_in_nanosec % 1000000000) + next_pub_time_even;
+      next_pub_time_.emplace(pub_time, this->get_clock()->get_clock_type());
+      is_ready_to_pub_ = true;
+
+      //      RCLCPP_INFO_STREAM(this->get_logger(), "Time: " << time_in_nanosec);
+      //      RCLCPP_INFO_STREAM(this->get_logger(), "Next: " << pub_time << '\n');
     }
 
-//    RCLCPP_INFO_STREAM(this->get_logger(), "Curr:\t" << this->now().nanoseconds() << '\n');
-//    RCLCPP_WARN_STREAM(this->get_logger(), "Next:\t" << next_pub_time_->nanoseconds() << '\n');
-
-    // Reset overflow buffer
-    _overflow_buffer.pc->points.clear();
-    _overflow_buffer.pc->width = 0;
-    _overflow_buffer.pc->height = 1;
-
-    // Unpack up until the last packet, which contains points over-running the scan cut point
-    for (size_t i = 0; i < scanMsg->packets.size() - 1; ++i) {
-      data_->unpack(scanMsg->packets[i], output_builder);
+    // Unpack all the packets.
+    for (const auto & packet : scanMsg->packets) {
+      data_->unpack(packet, *point_buffer_);
     }
+  }
+}
 
-    // Split the points of the last packet between pointcloud and overflow buffer
-    velodyne_pointcloud::PointcloudXYZIRADT last_packet_points;
-    last_packet_points.pc->points.reserve(data_->scansPerPacket());
-    data_->unpack(scanMsg->packets.back(), last_packet_points);
-
-    // If it's a partial scan, put all points in the main pointcloud
-//    int phase = (uint16_t)round(config_.scan_phase*100);
-//    bool keep_all = false;
-//    uint16_t last_packet_last_phase = (36000 + (uint16_t)last_packet_points.pc->points.back().azimuth - phase) % 36000;
-//    uint16_t body_packets_last_phase = (36000 + (uint16_t)output_builder.last_azimuth - phase) % 36000;
-
-//    if (body_packets_last_phase < last_packet_last_phase) {
-//      keep_all = true;
-//    }
-
-    // If it's a split packet, distribute to overflow buffer or main pointcloud based on azimuth
-    for (size_t i = 0; i < last_packet_points.pc->points.size(); ++i) {
-//      uint16_t current_azimuth = (uint16_t)last_packet_points.pc->points[i].azimuth;
-//      uint16_t phase_diff = (36000 + current_azimuth - phase) % 36000;
-//      if ((phase_diff > 18000) || keep_all) {
-      if (this->now() >= *next_pub_time_) {
-        auto &point = last_packet_points.pc->points[i];
-        output_builder.addPoint(point.x, point.y, point.z, point.return_type,
-            point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
-
-        is_pub_time = true;
-
-      } else {
-        _overflow_buffer.pc->points.push_back(last_packet_points.pc->points[i]);
-      }
-    }
-
-    if (is_pub_time){
-      const rclcpp::Duration hundred_ms{0, 100000000};
-      *next_pub_time_ += hundred_ms;
-    }
-
-    last_packet_points.pc->points.clear();
-    last_packet_points.pc->width = 0;
-    last_packet_points.pc->height = 1;
-    _overflow_buffer.pc->width = _overflow_buffer.pc->points.size();
-    _overflow_buffer.pc->height = 1;
+void Convert::periodicPublish()
+{
+  while (rclcpp::ok() && !is_ready_to_pub_) {
+    // Don't exit the thread.
   }
 
+  while (rclcpp::ok() && is_ready_to_pub_) {
+    // Publish points from buffer
+    point_buffer_->publish_cloud(*next_pub_time_, velodyne_points_pub_, velodyne_points_ex_pub_);
+    is_published_ = true;
 
-  if (output_builder.xyzir_is_activated() && is_pub_time) {
-    velodyne_points_pub_->publish(output_builder.move_xyzir_output());
-  }
-
-  if (output_builder.xyziradt_is_activated() && is_pub_time) {
-    velodyne_points_ex_pub_->publish(output_builder.move_xyziradt_output());
-  }
-
-  if (marker_array_pub_->get_subscription_count() > 0) {
-    const auto velodyne_model_marker = createVelodyneModelMakerMsg(scanMsg->header);
-    marker_array_pub_->publish(velodyne_model_marker);
+    // Wait until next publish time.
+    std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> sleep_until{
+      std::chrono::nanoseconds{next_pub_time_->nanoseconds()}};
+    std::this_thread::sleep_until(sleep_until);
+    *next_pub_time_ += *config_.scan_period;
   }
 }
 

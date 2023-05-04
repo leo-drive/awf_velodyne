@@ -19,6 +19,7 @@
 
 #include <deque>
 #include <string>
+#include <chrono>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -40,6 +41,7 @@
 
 #include <velodyne_pointcloud/pointcloudXYZIRADT.h>
 #include <velodyne_pointcloud/rawdata.h>
+#include "velodyne_pointcloud/ThreadSafeCloud.h"
 
 namespace velodyne_pointcloud
 {
@@ -54,6 +56,7 @@ private:
   /** \brief Parameter service callback */
   rcl_interfaces::msg::SetParametersResult paramCallback(const std::vector<rclcpp::Parameter> & p);
   void processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scanMsg);
+  void periodicPublish();
   visualization_msgs::msg::MarkerArray createVelodyneModelMakerMsg(const std_msgs::msg::Header & header);
   bool getTransform(
     const std::string & target_frame, const std::string & source_frame,
@@ -69,6 +72,10 @@ private:
 
   // Buffer for overflow points
   velodyne_pointcloud::PointcloudXYZIRADT _overflow_buffer;
+  std::shared_ptr<velodyne_pointcloud::ThreadSafeCloud> point_buffer_;
+  bool is_published_{true};
+  bool is_ready_to_pub_{false};
+  std::thread pub_thread_;
   /// Pointer to dynamic reconfigure service srv_
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 

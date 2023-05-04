@@ -20,7 +20,7 @@
         <arg name="repeat_delay" default="0.0"/>
         <arg name="rpm" default="600.0"/>
         <arg name="scan_phase" default="0.0"/>
-        <arg name="scan_period" default="100000000"/>
+        <arg name="scan_period" default="100"/> <!-- ms -->
         <arg name="sensor_timestamp" default="false"/>
         <arg name="laserscan_ring" default="-1"/>
         <arg name="laserscan_resolution" default="0.007"/>
@@ -74,7 +74,7 @@
         <arg name="repeat_delay" default="0.0"/>
         <arg name="rpm" default="600.0"/>
         <arg name="scan_phase" default="0.0"/>
-        <arg name="scan_period" default="100000000"/>
+        <arg name="scan_period" default="100"/> <!-- ms -->
         <arg name="sensor_timestamp" default="false"/>
         <arg name="laserscan_ring" default="-1"/>
         <arg name="laserscan_resolution" default="0.007"/>
