@@ -16,6 +16,10 @@ void ThreadSafeCloud::addPoint(
   const uint16_t & ring, const uint16_t & azimuth, const float & distance, const float & intensity,
   const double & time_stamp)
 {
+  if (distance < 1) {
+    return;
+  }
+
   velodyne_pointcloud::PointXYZIR point_xyzir;
   point_xyzir.x = x;
   point_xyzir.y = y;
@@ -34,7 +38,7 @@ void ThreadSafeCloud::addPoint(
   point_xyziradt.distance = distance;
   point_xyziradt.time_stamp = time_stamp;
 
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
 
   cloud_xyzir_.points.push_back(point_xyzir);
   ++cloud_xyzir_.width;
@@ -50,10 +54,11 @@ void ThreadSafeCloud::publish_cloud(
   sensor_msgs::msg::PointCloud2 msg_xyzir;
   sensor_msgs::msg::PointCloud2 msg_xyziradt;
 
-  std::unique_lock<std::mutex> lock(mutex_);
-
-  pcl::toROSMsg(cloud_xyzir_, msg_xyzir);
-  pcl::toROSMsg(cloud_xyziradt_, msg_xyziradt);
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pcl::toROSMsg(cloud_xyzir_, msg_xyzir);
+    pcl::toROSMsg(cloud_xyziradt_, msg_xyziradt);
+  }
 
   msg_xyzir.header.stamp = _time;
   msg_xyziradt.header.stamp = _time;
