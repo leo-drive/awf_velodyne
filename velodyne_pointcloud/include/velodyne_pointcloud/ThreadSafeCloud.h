@@ -16,11 +16,11 @@ namespace velodyne_pointcloud
 class ThreadSafeCloud : public velodyne_rawdata::DataContainerBase
 {
 public:
-  ThreadSafeCloud(const std::string & _frame_id);
+  explicit ThreadSafeCloud(const std::string & _frame_id);
   void addPoint(
     const float & x, const float & y, const float & z, const uint8_t & return_type,
     const uint16_t & ring, const uint16_t & azimuth, const float & distance,
-    const float & intensity, const double & time_stamp);
+    const float & intensity, const double & time_stamp) override;
 
   void publish_cloud(
     const rclcpp::Time & _time,
