@@ -51,6 +51,10 @@ void ThreadSafeCloud::publish_cloud(
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _publisher_xyzir,
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _publisher_xyziradt)
 {
+  if (cloud_xyzir_.empty() || cloud_xyziradt_.empty()) {
+    return;
+  }
+
   sensor_msgs::msg::PointCloud2 msg_xyzir;
   sensor_msgs::msg::PointCloud2 msg_xyziradt;
 
@@ -58,6 +62,11 @@ void ThreadSafeCloud::publish_cloud(
     std::lock_guard<std::mutex> lock(mutex_);
     pcl::toROSMsg(cloud_xyzir_, msg_xyzir);
     pcl::toROSMsg(cloud_xyziradt_, msg_xyziradt);
+
+    cloud_xyzir_.clear();
+    cloud_xyziradt_.clear();
+    cloud_xyzir_.height = 1;
+    cloud_xyziradt_.height = 1;
   }
 
   msg_xyzir.header.stamp = _time;

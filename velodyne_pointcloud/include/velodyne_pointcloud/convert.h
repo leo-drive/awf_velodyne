@@ -73,7 +73,6 @@ private:
   // Buffer for overflow points
   velodyne_pointcloud::PointcloudXYZIRADT _overflow_buffer;
   std::shared_ptr<velodyne_pointcloud::ThreadSafeCloud> point_buffer_;
-  bool is_published_{true};
   std::atomic_bool is_ready_to_pub_{false};
   std::thread pub_thread_;
   /// Pointer to dynamic reconfigure service srv_

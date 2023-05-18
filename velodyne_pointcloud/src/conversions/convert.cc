@@ -154,6 +154,7 @@ Convert::Convert(const rclcpp::NodeOptions & options)
     "velodyne_packets", rclcpp::SensorDataQoS(),
     std::bind(&Convert::processScan, this, std::placeholders::_1));
 
+  point_buffer_ = std::make_shared<velodyne_pointcloud::ThreadSafeCloud>("velodyne");
   pub_thread_ = std::thread(&Convert::periodicPublish, this);
 }
 
@@ -207,12 +208,6 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
   bool activate_xyziradt = velodyne_points_ex_pub_->get_subscription_count() > 0;
   bool activate_xyzir = velodyne_points_pub_->get_subscription_count() > 0;
 
-  // Recreate buffer after publishing the cloud.
-  if (is_published_) {
-    point_buffer_ = std::make_shared<velodyne_pointcloud::ThreadSafeCloud>("velodyne");
-    is_published_ = false;
-  }
-
   if (activate_xyziradt || activate_xyzir) {
     // Hold the time when the first packet has arrived.
     if (!next_pub_time_.has_value()) {
@@ -249,7 +244,6 @@ void Convert::periodicPublish()
   while (rclcpp::ok() && is_ready_to_pub_) {
     // Publish points from buffer
     point_buffer_->publish_cloud(*next_pub_time_, velodyne_points_pub_, velodyne_points_ex_pub_);
-    is_published_ = true;
 
     // Wait until next publish time.
     std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> sleep_until{
