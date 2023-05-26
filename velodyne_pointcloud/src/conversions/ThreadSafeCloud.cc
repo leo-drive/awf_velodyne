@@ -2,7 +2,14 @@
 
 namespace velodyne_pointcloud
 {
-ThreadSafeCloud::ThreadSafeCloud(const std::string & _frame_id)
+ThreadSafeCloud::ThreadSafeCloud(
+  const std::string & _frame_id, const bool & _is_remove_active,
+  const std::vector<long> & _invalid_rings, const std::vector<long> & _invalid_angles_start,
+  const std::vector<long> & _invalid_angles_end)
+: invalid_rings_{_invalid_rings},
+  invalid_angles_start_{_invalid_angles_start},
+  invalid_angles_end_{_invalid_angles_end},
+  is_remove_active_{_is_remove_active}
 {
   cloud_xyzir_.header.frame_id = _frame_id;
   cloud_xyzir_.height = 1;
@@ -16,8 +23,15 @@ void ThreadSafeCloud::addPoint(
   const uint16_t & ring, const uint16_t & azimuth, const float & distance, const float & intensity,
   const double & time_stamp)
 {
-  if (distance < 1) {
-    return;
+  // Check for invalid rings
+  if (is_remove_active_) {
+    const auto iter = std::find(invalid_rings_.begin(), invalid_rings_.end(), ring);
+    if (iter != invalid_rings_.end()) {
+      const auto index = iter - invalid_rings_.begin();
+      if (azimuth >= invalid_angles_start_[index] && azimuth <= invalid_angles_end_[index]) {
+        return;
+      }
+    }
   }
 
   velodyne_pointcloud::PointXYZIR point_xyzir;

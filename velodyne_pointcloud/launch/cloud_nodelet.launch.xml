@@ -10,6 +10,10 @@
   <arg name="invalid_intensity" default="[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]"/>
   <arg name="scan_phase" default="0.0"/>
   <arg name="scan_period" default="100000000"/>
+  <arg name="invalid_point_remove" default="false"/>
+  <arg name="invalid_rings" default="[0]"/>
+  <arg name="invalid_angles_start" default="[0]"/>
+  <arg name="invalid_angles_end" default="[0]"/>
 
   <node pkg="velodyne_pointcloud" exec="cloud_node" name="$(var manager)_cloud">
     <param name="calibration" value="$(var calibration)"/>
@@ -19,5 +23,9 @@
     <param name="invalid_intensity" value="$(var invalid_intensity)"/>
     <param name="scan_phase" value="$(var scan_phase)"/>
     <param name="scan_period" value="$(var scan_period)"/>
+    <param name="invalid_point_remove" value="$(var invalid_point_remove)"/>
+    <param name="invalid_rings" value="$(var invalid_rings)"/>
+    <param name="invalid_angles_start" value="$(var invalid_angles_start)"/>
+    <param name="invalid_angles_end" value="$(var invalid_angles_end)"/>
   </node>
 </launch>

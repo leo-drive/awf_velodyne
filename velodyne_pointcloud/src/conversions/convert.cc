@@ -139,6 +139,37 @@ Convert::Convert(const rclcpp::NodeOptions & options)
     invalid_intensity_array_.at(i) = static_cast<float>(invalid_intensity_double[i]);
   }
 
+  const bool invalid_point_remove = this->declare_parameter("invalid_point_remove", false);
+  if (invalid_point_remove) {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Invalid point remove is active.");
+  } else {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Invalid point remove is not active.");
+  }
+
+  this->declare_parameter("invalid_rings", std::vector<int64_t>());
+  const std::vector<int64_t> invalid_rings =
+    this->get_parameter("invalid_rings").as_integer_array();
+  RCLCPP_INFO_STREAM(this->get_logger(), "Invalid rings: ");
+  for (const auto & invalid_ring : invalid_rings) {
+    RCLCPP_INFO_STREAM(this->get_logger(), invalid_ring << " ");
+  }
+
+  this->declare_parameter("invalid_angles_start", rclcpp::PARAMETER_INTEGER_ARRAY);
+  const std::vector<int64_t> invalid_angles_start =
+    this->get_parameter("invalid_angles_start").as_integer_array();
+  RCLCPP_INFO_STREAM(this->get_logger(), "Invalid angles start: ");
+  for (const auto & angle : invalid_angles_start) {
+    RCLCPP_INFO_STREAM(this->get_logger(), angle << " ");
+  }
+
+  this->declare_parameter("invalid_angles_end", rclcpp::PARAMETER_INTEGER_ARRAY);
+  const std::vector<int64_t> invalid_angles_end =
+    this->get_parameter("invalid_angles_end").as_integer_array();
+  RCLCPP_INFO_STREAM(this->get_logger(), "Invalid angles end: ");
+  for (const auto & angle : invalid_angles_end) {
+    RCLCPP_INFO_STREAM(this->get_logger(), angle << " ");
+  }
+
   // advertise
   velodyne_points_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("velodyne_points", rclcpp::SensorDataQoS());
   velodyne_points_ex_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("velodyne_points_ex", rclcpp::SensorDataQoS());
@@ -154,7 +185,8 @@ Convert::Convert(const rclcpp::NodeOptions & options)
     "velodyne_packets", rclcpp::SensorDataQoS(),
     std::bind(&Convert::processScan, this, std::placeholders::_1));
 
-  point_buffer_ = std::make_shared<velodyne_pointcloud::ThreadSafeCloud>("velodyne");
+  point_buffer_ = std::make_shared<velodyne_pointcloud::ThreadSafeCloud>(
+    "velodyne", invalid_point_remove, invalid_rings, invalid_angles_start, invalid_angles_end);
   pub_thread_ = std::thread(&Convert::periodicPublish, this);
 }
 

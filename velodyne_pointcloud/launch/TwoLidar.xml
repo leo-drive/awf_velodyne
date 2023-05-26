@@ -3,7 +3,7 @@
 
 <launch>
     <group>
-        <push-ros-namespace namespace="first"/>
+        <push-ros-namespace namespace="middle_left"/>
         <!-- declare arguments with default values -->
         <arg name="launch_driver" default="true"/>
 
@@ -14,7 +14,7 @@
         <arg name="max_range" default="130.0"/>
         <arg name="min_range" default="0.4"/>
         <arg name="pcap" default=""/>
-        <arg name="port" default="2368"/>
+        <arg name="port" default="2370"/>
         <arg name="read_fast" default="false"/>
         <arg name="read_once" default="false"/>
         <arg name="repeat_delay" default="0.0"/>
@@ -27,6 +27,10 @@
         <arg name="num_points_threshold" default="300"/>
         <arg name="invalid_intensity"
              default="[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"/>
+        <arg name="invalid_point_remove" default="true"/>
+        <arg name="invalid_rings" default="[0,1,2,3,4]"/>
+        <arg name="invalid_angles_start" default="[28000,28000,28000,3330,3330]"/>
+        <arg name="invalid_angles_end" default="[29875,29875,29875,3635,3635]"/>
 
         <!-- start nodelet manager -->
         <include file="$(find-pkg-share velodyne_driver)/launch/nodelet_manager.launch.xml" if="$(var launch_driver)">
@@ -54,10 +58,14 @@
             <arg name="invalid_intensity" value="$(var invalid_intensity)"/>
             <arg name="scan_phase" value="$(var scan_phase)"/>
             <arg name="scan_period" value="$(var scan_period)"/>
+            <arg name="invalid_point_remove" value="$(var invalid_point_remove)"/>
+            <arg name="invalid_rings" value="$(var invalid_rings)"/>
+            <arg name="invalid_angles_start" value="$(var invalid_angles_start)"/>
+            <arg name="invalid_angles_end" value="$(var invalid_angles_end)"/>
         </include>
     </group>
     <group>
-        <push-ros-namespace namespace="second"/>
+        <push-ros-namespace namespace="middle_right"/>
         <!-- declare arguments with default values -->
         <arg name="launch_driver" default="true"/>
 
@@ -68,7 +76,7 @@
         <arg name="max_range" default="130.0"/>
         <arg name="min_range" default="0.4"/>
         <arg name="pcap" default=""/>
-        <arg name="port" default="2369"/>
+        <arg name="port" default="2372"/>
         <arg name="read_fast" default="false"/>
         <arg name="read_once" default="false"/>
         <arg name="repeat_delay" default="0.0"/>
@@ -81,6 +89,10 @@
         <arg name="num_points_threshold" default="300"/>
         <arg name="invalid_intensity"
              default="[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"/>
+        <arg name="invalid_point_remove" default="true"/>
+        <arg name="invalid_rings" default="[0,1,2]"/>
+        <arg name="invalid_angles_start" default="[0]"/>
+        <arg name="invalid_angles_end" default="[0]"/>
 
         <!-- start nodelet manager -->
         <include file="$(find-pkg-share velodyne_driver)/launch/nodelet_manager.launch.xml" if="$(var launch_driver)">
@@ -108,6 +120,10 @@
             <arg name="invalid_intensity" value="$(var invalid_intensity)"/>
             <arg name="scan_phase" value="$(var scan_phase)"/>
             <arg name="scan_period" value="$(var scan_period)"/>
+            <arg name="invalid_point_remove" value="$(var invalid_point_remove)"/>
+            <arg name="invalid_rings" value="$(var invalid_rings)"/>
+            <arg name="invalid_angles_start" value="$(var invalid_angles_start)"/>
+            <arg name="invalid_angles_end" value="$(var invalid_angles_end)"/>
         </include>
     </group>
 </launch>
