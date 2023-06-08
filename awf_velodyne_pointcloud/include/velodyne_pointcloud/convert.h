@@ -19,6 +19,7 @@
 
 #include <deque>
 #include <string>
+#include <optional>
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -40,6 +41,7 @@
 
 #include <velodyne_pointcloud/pointcloudXYZIRADT.h>
 #include <velodyne_pointcloud/rawdata.h>
+#include "velodyne_pointcloud/InvalidPointChecker.h"
 
 namespace velodyne_pointcloud
 {
@@ -66,6 +68,7 @@ private:
 
   // tf2_ros::Buffer tf2_buffer_;
   // tf2_ros::TransformListener tf2_listener_;
+  std::optional<InvalidPointChecker> invalid_point_checker_;
 
   // Buffer for overflow points
   velodyne_pointcloud::PointcloudXYZIRADT _overflow_buffer;

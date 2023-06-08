@@ -5,8 +5,11 @@
 
 namespace velodyne_pointcloud {
 
-OutputBuilder::OutputBuilder(size_t output_max_points_num, const VelodyneScan & scan_msg,
-    bool activate_xyziradt, bool activate_xyzir) : xyziradt_activated_(activate_xyziradt), xyzir_activated_(activate_xyzir) {
+OutputBuilder::OutputBuilder(
+  size_t output_max_points_num, const VelodyneScan & scan_msg, bool activate_xyziradt,
+  bool activate_xyzir, InvalidPointChecker & invalid_point_checker)
+: xyziradt_activated_(activate_xyziradt), xyzir_activated_(activate_xyzir), invalid_point_checker_(invalid_point_checker)
+{
   pcl::for_each_type<typename pcl::traits::fieldList<PointXYZIRADT>::type>(
       pcl::detail::FieldAdder<PointXYZIRADT>(xyziradt_fields_));
 
@@ -91,9 +94,9 @@ void OutputBuilder::addPoint(
   // Needed for velodyne_convert_node logic.
   last_azimuth = azimuth;
 
-  if (xyziradt_activated_ && !output_xyziradt_moved_ &&
-      min_range_ <= distance && distance <= max_range_) {
-
+  if (
+    xyziradt_activated_ && !output_xyziradt_moved_ && min_range_ <= distance &&
+    distance <= max_range_ && !invalid_point_checker_.is_invalid(ring, azimuth)) {
     /* Slightly slower
     auto &msg = *output_xyziradt_;
     auto &sz = output_xyziradt_data_size_;
@@ -124,8 +127,10 @@ void OutputBuilder::addPoint(
     output_xyziradt_->row_step += output_xyziradt_->point_step;
   }
 
-  if (xyzir_activated_ && !output_xyzir_moved_ &&
-      min_range_ <= distance && distance <= max_range_) {
+  if (
+    xyzir_activated_ && !output_xyzir_moved_ && min_range_ <= distance && distance <= max_range_ &&
+    !invalid_point_checker_.is_invalid(ring, azimuth)) {
+
     if (first_timestamp_ == 0) first_timestamp_ = time_stamp;
 
     /* Slightly slower
