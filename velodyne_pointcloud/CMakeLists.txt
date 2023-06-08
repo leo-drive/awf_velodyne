@@ -57,6 +57,7 @@ ament_auto_add_library(cloud_nodelet SHARED
   src/conversions/output_builder.cc
   src/conversions/func.cc
   src/conversions/ThreadSafeCloud.cc
+  src/conversions/InvalidPointChecker.cc
 )
 target_link_libraries(cloud_nodelet velodyne_rawdata ${YAML_CPP_LIBRARIES} ${OpenCV_LIBS})
 
