@@ -17,14 +17,15 @@
 #ifndef _VELODYNE_POINTCLOUD_CONVERT_H_
 #define _VELODYNE_POINTCLOUD_CONVERT_H_ 1
 
-#include <deque>
-#include <string>
-#include <chrono>
-#include <atomic>
 #include <rclcpp/rclcpp.hpp>
 
 #include <tf2/convert.h>
 #include <tf2/transform_datatypes.h>
+
+#include <atomic>
+#include <chrono>
+#include <deque>
+#include <string>
 
 #ifdef USE_TF2_GEOMETRY_MSGS_DEPRECATED_HEADER
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -32,16 +33,17 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #endif
 
-#include <tf2_ros/transform_listener.h>
-#include <tf2_ros/buffer.h>
+#include "velodyne_pointcloud/InvalidPointChecker.h"
+#include "velodyne_pointcloud/ThreadSafeCloud.h"
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 #include <velodyne_pointcloud/pointcloudXYZIRADT.h>
 #include <velodyne_pointcloud/rawdata.h>
-#include "velodyne_pointcloud/ThreadSafeCloud.h"
 
 namespace velodyne_pointcloud
 {
@@ -52,12 +54,12 @@ public:
   ~Convert() {}
 
 private:
-
   /** \brief Parameter service callback */
   rcl_interfaces::msg::SetParametersResult paramCallback(const std::vector<rclcpp::Parameter> & p);
   void processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scanMsg);
   void periodicPublish();
-  visualization_msgs::msg::MarkerArray createVelodyneModelMakerMsg(const std_msgs::msg::Header & header);
+  visualization_msgs::msg::MarkerArray createVelodyneModelMakerMsg(
+    const std_msgs::msg::Header & header);
   bool getTransform(
     const std::string & target_frame, const std::string & source_frame,
     tf2::Transform * tf2_transform_ptr);
@@ -74,6 +76,7 @@ private:
   velodyne_pointcloud::PointcloudXYZIRADT _overflow_buffer;
   std::shared_ptr<velodyne_pointcloud::ThreadSafeCloud> point_buffer_;
   std::atomic_bool is_ready_to_pub_{false};
+  std::atomic_bool is_ready_non_periodic_pub_{false};
   std::thread pub_thread_;
   /// Pointer to dynamic reconfigure service srv_
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr set_param_res_;
@@ -91,14 +94,15 @@ private:
     double max_range;
     double view_direction;
     double view_width;
-    int npackets;               ///< number of packets to combine
-    double scan_phase;        ///< sensor phase (degrees)
-    bool sensor_timestamp;      ///< flag on whether to use sensor (GPS) time or ROS receive time
+    int npackets;           ///< number of packets to combine
+    double scan_phase;      ///< sensor phase (degrees)
+    bool sensor_timestamp;  ///< flag on whether to use sensor (GPS) time or ROS receive time
     std::unique_ptr<rclcpp::Duration> scan_period;
   } Config;
   Config config_;
 
   std::optional<rclcpp::Time> next_pub_time_;
+  velodyne_pointcloud::PointcloudXYZIRADT my_overflow_buffer_;
 };
 
 }  // namespace velodyne_pointcloud

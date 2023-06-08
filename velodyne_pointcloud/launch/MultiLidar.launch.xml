@@ -1,0 +1,36 @@
+<launch>
+    <group>
+        <push-ros-namespace namespace="middle_left"/>
+        <include file="$(find-pkg-share velodyne_pointcloud)/launch/multi_lidar_launch.py">
+            <arg name="device_ip" value=""/>
+            <arg name="port" value="2370"/>
+            <arg name="scan_phase" value="180.0"/>
+            <arg name="frame_id" default="VLP16_ML"/>
+            <arg name="pcap" default=""/>
+            <arg name="read_fast" default="false"/>
+            <arg name="read_once" default="false"/>
+            <arg name="repeat_delay" default="0.0"/>
+            <arg name="rpm" default="600.0"/>
+        </include>
+
+        <include file="$(find-pkg-share velodyne_pointcloud)/launch/multi_lidar_launch.py">
+            <arg name="scan_phase" value="180.0"/>
+            <arg name="frame_id" default="VLP16_ML"/>
+            <arg name="calibration" default="$(find-pkg-share velodyne_pointcloud)/params/VLP16db.yaml"/>
+            <arg name="frame_id" default="velodyne"/>
+            <arg name="max_range" default="130.0"/>
+            <arg name="min_range" default="0.4"/>
+            <arg name="scan_period" default="100"/> <!-- ms -->
+            <arg name="num_points_threshold" default="300"/>
+            <arg name="invalid_intensity"
+                 default="[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"/>
+            <arg name="invalid_rings" default="[0,1,2]"/>
+            <arg name="invalid_distance" default="3.0"/>
+        </include>
+    </group>
+
+<!--    <group>-->
+<!--        <push-ros-namespace namespace="middle_right"/>-->
+
+<!--    </group>-->
+</launch>
