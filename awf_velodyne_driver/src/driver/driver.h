@@ -17,12 +17,14 @@
 #define _VELODYNE_DRIVER_H_ 1
 
 #include <string>
+#include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_updater/publisher.hpp>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
 
 #include <velodyne_driver/input.h>
+#include <velodyne_driver/self_synchronizer.h>
 
 namespace velodyne_driver
 {
@@ -70,6 +72,9 @@ private:
                               // or [Both  => Dual Retruns per fire]
   // uint8_t  curr_packet_sensor_model; // extract the sensor id from packet
   std::string dump_file; // string to hold pcap file name
+
+  std::optional<uint16_t> end_phase_;
+  SelfSynchronizer self_sync_;
 };
 
 } // namespace velodyne_driver
