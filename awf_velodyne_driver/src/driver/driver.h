@@ -17,8 +17,10 @@
 #define _VELODYNE_DRIVER_H_ 1
 
 #include <string>
+#include <sstream>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
+#include <rcl_interfaces/srv/set_parameters.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_updater/publisher.hpp>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
@@ -75,6 +77,7 @@ private:
 
   std::optional<uint16_t> end_phase_;
   SelfSynchronizer self_sync_;
+  rclcpp::Client<rcl_interfaces::srv::SetParameters>::SharedPtr srv_client_;
 };
 
 } // namespace velodyne_driver

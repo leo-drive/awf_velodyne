@@ -165,6 +165,7 @@ rcl_interfaces::msg::SetParametersResult Convert::paramCallback(const std::vecto
 
   get_param(p, "num_points_threshold", num_points_threshold_);
   get_param(p, "scan_phase", config_.scan_phase);
+  RCLCPP_DEBUG_STREAM(this->get_logger(), "scan_phase: " << config_.scan_phase);
 
   std::vector<double> invalid_intensity_double;
   auto it = std::find_if(p.cbegin(), p.cend(), [](const rclcpp::Parameter & parameter) {
