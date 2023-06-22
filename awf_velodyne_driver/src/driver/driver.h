@@ -17,7 +17,6 @@
 #define _VELODYNE_DRIVER_H_ 1
 
 #include <string>
-#include <sstream>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
