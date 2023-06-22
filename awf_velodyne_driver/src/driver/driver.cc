@@ -262,26 +262,9 @@ VelodyneDriverCore::VelodyneDriverCore(rclcpp::Node * node_ptr)
     node_ptr_->create_publisher<velodyne_msgs::msg::VelodyneScan>(
       "velodyne_packets", rclcpp::SensorDataQoS());
 
-  // wait for velodyne_pointcloud node to subscribe to velodyne_packets topic
-  while (output_->get_subscription_count() < 1) {
-    RCLCPP_INFO(node_ptr_->get_logger(), "Waiting velodyne_pointcloud node to subscribe.");
-    rclcpp::sleep_for(std::chrono::seconds(1));
-  }
-  if (output_->get_subscription_count() > 1) {
-    RCLCPP_WARN(
-      node_ptr_->get_logger(), "More than one node subscribed to velodyne_packets topic.");
-  }
-
-  // get the service name to set the scan_phase param on the velodyne_pointcloud node
-  const auto sub_info = node_ptr_->get_subscriptions_info_by_topic(output_->get_topic_name());
-  std::stringstream param_service_name;
-  param_service_name << sub_info.front().node_namespace() << "/" << sub_info.front().node_name()
-                     << "/set_parameters";
-  RCLCPP_DEBUG(node_ptr_->get_logger(), "Service name: %s", param_service_name.str().c_str());
-
-  // create service client to set scan_phase param on the velodyne_pointcloud node
-  srv_client_ =
-    node_ptr_->create_client<rcl_interfaces::srv::SetParameters>(param_service_name.str());
+  // scan_phase output topic
+  output_phase_ =
+    node_ptr_->create_publisher<std_msgs::msg::UInt16>("scan_phase", rclcpp::SensorDataQoS());
 }
 
 /** poll the device
@@ -333,28 +316,12 @@ bool VelodyneDriverCore::poll(void)
 
     if(!end_phase_.has_value()){
         end_phase_.emplace(packet_first_azm);
-        RCLCPP_INFO_STREAM(node_ptr_->get_logger(), "Scan start/end will be at a phase of " << *end_phase_  << " degrees");
+        RCLCPP_DEBUG_STREAM(node_ptr_->get_logger(), "Scan start/end will be at a phase of " << *end_phase_  << " degrees");
 
         // set scan_phase param on the velodyne_pointcloud node
-        auto set_parameters_request = std::make_shared<rcl_interfaces::srv::SetParameters::Request>();
-        auto set_parameters_result = std::make_shared<rcl_interfaces::srv::SetParameters::Response>();
-
-        // create parameter as rcl_interfaces::msg::Parameter
-        rcl_interfaces::msg::Parameter scan_phase_param;
-        scan_phase_param.name = "scan_phase";
-        scan_phase_param.value.type = rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE;
-        const double scan_phase = static_cast<double>(*end_phase_)/100;
-        scan_phase_param.value.double_value = scan_phase;
-        RCLCPP_DEBUG_STREAM(node_ptr_->get_logger(), "Setting scan_phase param to " << scan_phase);
-
-        // add parameter to request
-        set_parameters_request->parameters.push_back(scan_phase_param);
-
-        // call service
-        auto future_result = srv_client_->async_send_request(set_parameters_request);
-
-        // wait for service to complete
-        future_result.wait_for(std::chrono::seconds(1));
+        std_msgs::msg::UInt16 scan_phase_msg;
+        scan_phase_msg.data = *end_phase_;
+        output_phase_->publish(scan_phase_msg);
     }
 
     packet_last_azm = scan->packets.back().data[1102];

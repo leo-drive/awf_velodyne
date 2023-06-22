@@ -20,10 +20,10 @@
 #include <sstream>
 #include <optional>
 #include <rclcpp/rclcpp.hpp>
-#include <rcl_interfaces/srv/set_parameters.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_updater/publisher.hpp>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
+#include <std_msgs/msg/u_int16.hpp>
 
 #include <velodyne_driver/input.h>
 #include <velodyne_driver/self_synchronizer.h>
@@ -63,6 +63,7 @@ private:
 
   std::shared_ptr<Input> input_;
   rclcpp::Publisher<velodyne_msgs::msg::VelodyneScan>::SharedPtr output_;
+  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr output_phase_;
 
   /** diagnostics updater */
   diagnostic_updater::Updater diagnostics_;
@@ -77,7 +78,6 @@ private:
 
   std::optional<uint16_t> end_phase_;
   SelfSynchronizer self_sync_;
-  rclcpp::Client<rcl_interfaces::srv::SetParameters>::SharedPtr srv_client_;
 };
 
 } // namespace velodyne_driver
