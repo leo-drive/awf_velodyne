@@ -157,8 +157,7 @@ bool get_param(const std::vector<rclcpp::Parameter> & p, const std::string & nam
 
 VelodyneDriverCore::VelodyneDriverCore(rclcpp::Node * node_ptr)
 : node_ptr_(node_ptr),
-  diagnostics_(node_ptr_, 0.2),
-  self_sync_{node_ptr}
+  diagnostics_(node_ptr_, 0.2)
 {
   // use private node handle to get parameters
   config_.frame_id = node_ptr_->declare_parameter("frame_id", std::string("velodyne"));
@@ -276,6 +275,7 @@ bool VelodyneDriverCore::poll(void)
 {
   // Allocate a new shared pointer for zero-copy sharing with other nodelets.
   auto scan = std::make_shared<velodyne_msgs::msg::VelodyneScan>();
+  std::deque<velodyne_msgs::msg::VelodynePacket> first_pub_packets;
 
   // Since the velodyne delivers data at a very high rate, keep
   // reading and publishing scans as fast as possible.
@@ -293,30 +293,47 @@ bool VelodyneDriverCore::poll(void)
     {
         // keep reading until full packet received
         velodyne_msgs::msg::VelodynePacket new_packet;
-        scan->packets.push_back(new_packet);
-        int rc = input_->getPacket(&scan->packets.back(), config_.time_offset);
+        int rc;
+        if(is_first_pub_){
+          first_pub_packets.push_back(new_packet);
+          rc = input_->getPacket(&first_pub_packets.back(), config_.time_offset);
+        }else{
+          scan->packets.push_back(new_packet);
+          rc = input_->getPacket(&scan->packets.back(), config_.time_offset);
+        }
         if (rc == 1) {
           // Received UDP packet
-          if (!self_sync_.is_synchronized()) {
-            // If it is the first packet, self-sync nodes.
-            scan->packets.pop_back();
-            self_sync_.sync();
-            continue;
+          if(!first_pub_time_.has_value()){
+            const std::chrono::time_point current_time = std::chrono::system_clock::now();
+            first_pub_time_.emplace(std::chrono::ceil<std::chrono::seconds>(current_time));
+            RCLCPP_INFO_STREAM(
+              node_ptr_->get_logger(), "Publishing next scan at " << first_pub_time_->time_since_epoch().count());
           }
           break;
         }                         // got a full packet?
         if (rc < 0) return false; // end of file reached?
 	if (rc == 0) continue; // timeout?
     }
+
+    if(is_first_scan_complete_){
+      first_pub_packets.pop_front();
+    }
+
     processed_packets++;
 
     // uint8_t  curr_packet_rmode;
-    packet_first_azm  = scan->packets.back().data[2]; // lower word of azimuth block 0
-    packet_first_azm |= scan->packets.back().data[3] << 8; // higher word of azimuth block 0
+    if(is_first_pub_){
+      packet_first_azm  = first_pub_packets.back().data[2]; // lower word of azimuth block 0
+      packet_first_azm |= first_pub_packets.back().data[3] << 8; // higher word of azimuth block 0
+    }
+    else{
+      packet_first_azm  = scan->packets.back().data[2]; // lower word of azimuth block 0
+      packet_first_azm |= scan->packets.back().data[3] << 8; // higher word of azimuth block 0
+    }
 
     if(!end_phase_.has_value()){
         end_phase_.emplace(packet_first_azm);
-        RCLCPP_DEBUG_STREAM(node_ptr_->get_logger(), "Scan start/end will be at a phase of " << *end_phase_  << " degrees");
+        RCLCPP_INFO_STREAM(node_ptr_->get_logger(), "Scan start/end will be at a phase of " << *end_phase_  << " degrees");
 
         // set scan_phase param on the velodyne_pointcloud node
         std_msgs::msg::UInt16 scan_phase_msg;
@@ -324,8 +341,13 @@ bool VelodyneDriverCore::poll(void)
         output_phase_->publish(scan_phase_msg);
     }
 
-    packet_last_azm = scan->packets.back().data[1102];
-    packet_last_azm |= scan->packets.back().data[1103] << 8;
+    if(is_first_pub_){
+        packet_last_azm = first_pub_packets.back().data[1102];
+        packet_last_azm |= first_pub_packets.back().data[1103] << 8;
+    } else {
+        packet_last_azm = scan->packets.back().data[1102];
+        packet_last_azm |= scan->packets.back().data[1103] << 8;
+    }
 
     // curr_packet_rmode = scan->packets.back().data[1204];
     // curr_packet_sensor_model = scan->packets.back().data[1205];
@@ -340,12 +362,34 @@ bool VelodyneDriverCore::poll(void)
     packet_last_azm_phased = (36000 + packet_last_azm - *end_phase_) % 36000;
     if (processed_packets > 1)
     {
-      if (packet_last_azm_phased < packet_first_azm_phased || packet_first_azm_phased < prev_packet_first_azm_phased)
-      {
+      if(is_first_scan_complete_ && std::chrono::system_clock::now() >= *first_pub_time_){
+        // Ready for first publish
         use_next_packet = false;
+        is_first_scan_complete_ = false;
+
+        uint16_t phase = first_pub_packets.front().data[2];
+        phase |= first_pub_packets.front().data[3] << 8;
+        *end_phase_ = phase;
+        // set scan_phase param on the velodyne_pointcloud node
+        std_msgs::msg::UInt16 scan_phase_msg;
+        scan_phase_msg.data = *end_phase_;
+        output_phase_->publish(scan_phase_msg);
+      }
+      else if (packet_last_azm_phased < packet_first_azm_phased || packet_first_azm_phased < prev_packet_first_azm_phased)
+      {
+          if(is_first_pub_ && !is_first_scan_complete_){
+            is_first_scan_complete_ = true;
+          }
+          if(!is_first_pub_){
+            use_next_packet = false;
+          }
       }
     }
     prev_packet_first_azm_phased = packet_first_azm_phased;
+  }
+  if(is_first_pub_){
+    scan->packets.emplace_back(std::move(first_pub_packets.front()));
+//    is_first_pub_ = false;
   }
 
   // average the time stamp from first package and last package
@@ -359,6 +403,12 @@ bool VelodyneDriverCore::poll(void)
   // scan->scan->header.stamp = scan->packets[scan->packets.size()/2].stamp;
   scan->header.frame_id = config_.frame_id;
   output_->publish(*scan);
+  if(is_first_pub_){
+    RCLCPP_INFO_STREAM(
+      node_ptr_->get_logger(), "First scan published with timestamp "
+                                 << scan->header.stamp.sec << "." << scan->header.stamp.nanosec);
+    is_first_pub_ = false;
+  }
   // notify diagnostics that a message has been published, updating
   // its status
   diag_topic_->tick(scan->header.stamp);

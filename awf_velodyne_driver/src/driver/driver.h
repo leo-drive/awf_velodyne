@@ -18,14 +18,16 @@
 
 #include <string>
 #include <optional>
+#include <deque>
+#include <chrono>
 #include <rclcpp/rclcpp.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_updater/publisher.hpp>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
 #include <std_msgs/msg/u_int16.hpp>
+#include <std_msgs/msg/empty.hpp>
 
 #include <velodyne_driver/input.h>
-#include <velodyne_driver/self_synchronizer.h>
 
 namespace velodyne_driver
 {
@@ -38,6 +40,7 @@ public:
   ~VelodyneDriverCore() {}
 
   bool poll(void);
+  void startCallback(const std_msgs::msg::Empty & msg);
 
 private:
 
@@ -76,7 +79,9 @@ private:
   std::string dump_file; // string to hold pcap file name
 
   std::optional<uint16_t> end_phase_;
-  SelfSynchronizer self_sync_;
+  bool is_first_pub_{true};
+  bool is_first_scan_complete_{false};
+  std::optional<std::chrono::time_point<std::chrono::system_clock>> first_pub_time_;
 };
 
 } // namespace velodyne_driver

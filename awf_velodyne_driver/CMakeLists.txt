@@ -30,7 +30,7 @@ ament_auto_add_library(velodyne_driver SHARED
   src/driver/nodelet.cc
   # src/driver/driver.cpp
 )
-target_link_libraries(velodyne_driver velodyne_input velodyne_sync)
+target_link_libraries(velodyne_driver velodyne_input)
 
 rclcpp_components_register_node(velodyne_driver
   PLUGIN "velodyne_driver::VelodyneDriver"

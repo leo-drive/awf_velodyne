@@ -10,12 +10,3 @@ target_link_libraries(velodyne_input
 install(TARGETS velodyne_input
         LIBRARY DESTINATION lib
 )
-
-add_library(velodyne_sync SHARED self_synchronizer.cc)
-ament_target_dependencies(velodyne_sync
-  rclcpp
-)
-
-install(TARGETS velodyne_sync
-        LIBRARY DESTINATION lib
-)
