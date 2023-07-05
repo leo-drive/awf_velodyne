@@ -148,6 +148,11 @@ Convert::Convert(const rclcpp::NodeOptions & options)
     this->create_subscription<velodyne_msgs::msg::VelodyneScan>(
     "velodyne_packets", rclcpp::SensorDataQoS(),
     std::bind(&Convert::processScan, this, std::placeholders::_1));
+
+  // subscribe to scan_phase topic
+  scan_phase_sub_ = this->create_subscription<std_msgs::msg::UInt16>(
+    "scan_phase", rclcpp::SensorDataQoS(),
+    std::bind(&Convert::setScanPhase, this, std::placeholders::_1));
 }
 
 rcl_interfaces::msg::SetParametersResult Convert::paramCallback(const std::vector<rclcpp::Parameter> & p)
@@ -275,6 +280,12 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     const auto velodyne_model_marker = createVelodyneModelMakerMsg(scanMsg->header);
     marker_array_pub_->publish(velodyne_model_marker);
   }
+}
+
+void Convert::setScanPhase(const std_msgs::msg::UInt16::SharedPtr scanPhaseMsg)
+{
+  config_.scan_phase = static_cast<double>(scanPhaseMsg->data) / 100.0;
+  RCLCPP_INFO(get_logger(), "Set scan phase to %f", config_.scan_phase);
 }
 
 visualization_msgs::msg::MarkerArray Convert::createVelodyneModelMakerMsg(

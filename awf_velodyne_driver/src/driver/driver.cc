@@ -260,6 +260,10 @@ VelodyneDriverCore::VelodyneDriverCore(rclcpp::Node * node_ptr)
   output_ =
     node_ptr_->create_publisher<velodyne_msgs::msg::VelodyneScan>(
       "velodyne_packets", rclcpp::SensorDataQoS());
+
+  // scan_phase output topic
+  output_phase_ =
+    node_ptr_->create_publisher<std_msgs::msg::UInt16>("scan_phase", rclcpp::SensorDataQoS());
 }
 
 /** poll the device
@@ -280,7 +284,6 @@ bool VelodyneDriverCore::poll(void)
   uint16_t packet_last_azm_phased = 0;
   uint16_t prev_packet_first_azm_phased = 0;
 
-  uint16_t phase = (uint16_t)round(config_.scan_phase*100);
   bool use_next_packet = true;
   uint processed_packets = 0;
   while (use_next_packet && rclcpp::ok())
@@ -295,11 +298,34 @@ bool VelodyneDriverCore::poll(void)
         if (rc < 0) return false; // end of file reached?
 	if (rc == 0) continue; // timeout?
     }
+
+    const auto time_first_part = std::chrono::seconds (scan->packets.front().stamp.sec);
+    const auto time_second_part = std::chrono::nanoseconds(scan->packets.front().stamp.nanosec);
+    const auto time_stamp = time_first_part + time_second_part;
+
+    if(!first_pub_time_.has_value()){
+        first_pub_time_.emplace(std::chrono::ceil<std::chrono::seconds>(time_stamp));
+    }
+
+    if(time_stamp < *first_pub_time_){
+        continue ;
+    }
+
     processed_packets++;
 
     // uint8_t  curr_packet_rmode;
     packet_first_azm  = scan->packets.back().data[2]; // lower word of azimuth block 0
     packet_first_azm |= scan->packets.back().data[3] << 8; // higher word of azimuth block 0
+
+    if(!end_phase_.has_value()){
+        end_phase_.emplace(packet_first_azm);
+        RCLCPP_INFO_STREAM(node_ptr_->get_logger(), "Scan start/end will be at a phase of " << *end_phase_  << " degrees");
+
+        // set scan_phase param on the velodyne_pointcloud node
+        std_msgs::msg::UInt16 scan_phase_msg;
+        scan_phase_msg.data = *end_phase_;
+        output_phase_->publish(scan_phase_msg);
+    }
 
     packet_last_azm = scan->packets.back().data[1102];
     packet_last_azm |= scan->packets.back().data[1103] << 8;
@@ -313,8 +339,8 @@ bool VelodyneDriverCore::poll(void)
     // NOTE: this also works for dual echo mode because the last blank data block
     // still contains azimuth data (for VLS128). This should be modified in future
     // to concretely handle blank data blocks.
-    packet_first_azm_phased = (36000 + packet_first_azm - phase) % 36000;
-    packet_last_azm_phased = (36000 + packet_last_azm - phase) % 36000;
+    packet_first_azm_phased = (36000 + packet_first_azm - *end_phase_) % 36000;
+    packet_last_azm_phased = (36000 + packet_last_azm - *end_phase_) % 36000;
     if (processed_packets > 1)
     {
       if (packet_last_azm_phased < packet_first_azm_phased || packet_first_azm_phased < prev_packet_first_azm_phased)
