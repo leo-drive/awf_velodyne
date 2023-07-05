@@ -299,16 +299,22 @@ bool VelodyneDriverCore::poll(void)
 	if (rc == 0) continue; // timeout?
     }
 
-    const auto time_first_part = std::chrono::seconds (scan->packets.front().stamp.sec);
-    const auto time_second_part = std::chrono::nanoseconds(scan->packets.front().stamp.nanosec);
+    // get the timestamp of the current packet as chrono::duration
+    const auto time_first_part = std::chrono::seconds(scan->packets.back().stamp.sec);
+    const auto time_second_part = std::chrono::nanoseconds(scan->packets.back().stamp.nanosec);
     const auto time_stamp = time_first_part + time_second_part;
 
-    if(!first_pub_time_.has_value()){
+    // if it is the first packet, set the first publish time
+    if (!first_pub_time_.has_value()) {
         first_pub_time_.emplace(std::chrono::ceil<std::chrono::seconds>(time_stamp));
+        RCLCPP_INFO_STREAM(
+          node_ptr_->get_logger(), "First publish time: " << first_pub_time_->count() << " ns");
     }
 
-    if(time_stamp < *first_pub_time_){
-        continue ;
+    // skip until the first publish time is reached
+    if (time_stamp < *first_pub_time_) {
+        scan->packets.pop_back();
+        continue;
     }
 
     processed_packets++;
