@@ -21,6 +21,7 @@
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_updater/publisher.hpp>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
+#include <std_msgs/msg/u_int16.hpp>
 
 #include <velodyne_driver/input.h>
 
@@ -59,6 +60,7 @@ private:
 
   std::shared_ptr<Input> input_;
   rclcpp::Publisher<velodyne_msgs::msg::VelodyneScan>::SharedPtr output_;
+  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr output_phase_;
 
   /** diagnostics updater */
   diagnostic_updater::Updater diagnostics_;
@@ -70,6 +72,9 @@ private:
                               // or [Both  => Dual Retruns per fire]
   // uint8_t  curr_packet_sensor_model; // extract the sensor id from packet
   std::string dump_file; // string to hold pcap file name
+
+  std::optional<uint16_t> end_phase_;
+  std::optional<std::chrono::nanoseconds> first_pub_time_;
 };
 
 } // namespace velodyne_driver
