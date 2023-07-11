@@ -36,6 +36,12 @@ public:
     const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
     const float & distance, const float & intensity,
     const double & time_stamp) override;
+
+  void addPointWithIndx(
+    const float & x, const float & y, const float & z,
+    const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
+    const float & distance, const float & intensity,
+    const double & time_stamp, size_t indx);
 };
 }  // namespace velodyne_pointcloud
 #endif

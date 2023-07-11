@@ -37,4 +37,22 @@ void PointcloudXYZIRADT::addPoint(
   pc->points.push_back(point);
   ++pc->width;
 }
+
+
+void PointcloudXYZIRADT::addPointWithIndx(
+  const float & x, const float & y, const float & z,
+  const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
+  const float & distance, const float & intensity, const double & time_stamp, size_t indx)
+{
+  pc->points.at(indx).x = x;
+  pc->points.at(indx).y = y;
+  pc->points.at(indx).z = z;
+  pc->points.at(indx).intensity = intensity;
+  pc->points.at(indx).return_type = return_type;
+  pc->points.at(indx).ring = ring;
+  pc->points.at(indx).azimuth = azimuth;
+  pc->points.at(indx).distance = distance;
+  pc->points.at(indx).time_stamp = time_stamp;
+}
+
 }  // namespace velodyne_pointcloud
