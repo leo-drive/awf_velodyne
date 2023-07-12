@@ -269,6 +269,23 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     RCLCPP_INFO(this->get_logger(), "Combined pc size: %ld", combined_pc.pc->points.size());
 
 
+    std::chrono::steady_clock::time_point begin3 = std::chrono::steady_clock::now();
+    sensor_msgs::msg::PointCloud2::SharedPtr msg(new sensor_msgs::msg::PointCloud2);
+
+    pcl::toROSMsg(*combined_pc.pc,*msg);
+    msg->header.stamp = scanMsg->header.stamp;
+    msg->header.frame_id = scanMsg->header.frame_id;
+
+    velodyne_points_ex_pub_->publish(std::move(*msg));
+    std::chrono::steady_clock::time_point end3 = std::chrono::steady_clock::now();
+    double elapsed_time3 =
+      std::chrono::duration_cast<std::chrono::microseconds>(end3 - begin3).count();
+
+    RCLCPP_INFO(this->get_logger(), "Elapsed time conversion: %f", elapsed_time3);
+
+
+
+
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     double elapsed_time =
