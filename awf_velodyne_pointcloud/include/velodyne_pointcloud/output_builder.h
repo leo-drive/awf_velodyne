@@ -82,7 +82,8 @@ class OutputBuilder : public velodyne_rawdata::DataContainerBase {
 public:
   // Needed for velodyne_convert_node logic
   uint16_t last_azimuth;
-
+  uint32_t point_step_xyziradt_;
+  uint32_t point_step_xyzir_;
   OutputBuilder(size_t output_max_points_num, const VelodyneScan & scan_msg, bool activate_xyziradt, bool activate_xyzir);
 
   void set_extract_range(double min_range, double max_range);
@@ -98,6 +99,12 @@ public:
     const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
     const float & distance, const float & intensity,
     const double & time_stamp) override;
+
+  void addPointWithIndex(
+    const float & x, const float & y, const float & z,
+    const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
+    const float & distance, const float & intensity,
+    const double & time_stamp, const size_t & index);
 };
 
 } // namespace velodyne_pointcloud

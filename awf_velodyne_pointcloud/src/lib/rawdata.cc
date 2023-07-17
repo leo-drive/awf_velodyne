@@ -185,7 +185,7 @@ namespace velodyne_rawdata
    *  @param pkt raw packet to unpack
    *  @param pc shared pointer to point cloud (points are appended)
    */
-  void RawData::unpack(const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data)
+  void RawData::unpack(const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data, std::optional<size_t> idx)
   {
     using velodyne_pointcloud::LaserCorrection;
     RCLCPP_DEBUG_STREAM(
@@ -364,16 +364,27 @@ namespace velodyne_rawdata
             default:
               return_type = RETURN_TYPE::INVALID;
           }
-          if (is_invalid_distance) {
+          if (is_invalid_distance && !idx.has_value()) {
             data.addPoint(
               x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
               raw->blocks[i].rotation, 0,
               intensity, time_stamp);
-          } else {
+          } else if (is_invalid_distance && idx.has_value()){
+            data.addPointWithIndex(
+              x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+              raw->blocks[i].rotation, 0,
+              intensity, time_stamp, idx.value());
+          } else if(!is_invalid_distance && !idx.has_value()) {
             data.addPoint(
               x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
               raw->blocks[i].rotation, distance,
               intensity, time_stamp);
+          }
+          else {
+            data.addPointWithIndex(
+              x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+              raw->blocks[i].rotation, distance,
+              intensity, time_stamp, idx.value());
           }
         }
       }
@@ -387,7 +398,7 @@ namespace velodyne_rawdata
  */
   void RawData::unpack_vlp16(
     const velodyne_msgs::msg::VelodynePacket & pkt,
-    DataContainerBase & data)
+    DataContainerBase & data, std::optional<size_t> idx)
   {
     const raw_packet_t * raw = (const raw_packet_t *) &pkt.data[0];
     float last_azimuth_diff = 0;
@@ -554,14 +565,22 @@ namespace velodyne_rawdata
                   default:
                     return_type = RETURN_TYPE::INVALID;
                 }
-                if (is_invalid_distance) {
+                if (is_invalid_distance && !idx.has_value()) {
                   data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
                     azimuth_corrected, 0, intensity, time_stamp);
-                } else {
+                } else if(is_invalid_distance && idx.has_value()){
+                  data.addPointWithIndex(
+                    x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+                    azimuth_corrected, 0, intensity, time_stamp, idx.value());
+                } else if (!is_invalid_distance && !idx.has_value()) {
                   data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
                     azimuth_corrected, distance, intensity, time_stamp);
+                } else {
+                  data.addPointWithIndex(
+                  x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+                  azimuth_corrected, distance, intensity, time_stamp, idx.value());
                 }
               }
             }
@@ -578,7 +597,7 @@ namespace velodyne_rawdata
  */
   void RawData::unpack_vls128(
     const velodyne_msgs::msg::VelodynePacket & pkt,
-    DataContainerBase & data)
+    DataContainerBase & data, std::optional<size_t> idx)
   {
     const raw_packet_t * raw = (const raw_packet_t *) &pkt.data[0];
     float last_azimuth_diff = 0;
@@ -764,14 +783,22 @@ namespace velodyne_rawdata
                 default:
                   return_type = RETURN_TYPE::INVALID;
               }
-              if (is_invalid_distance) {
+              if (is_invalid_distance && !idx.has_value()) {
                 data.addPoint(
                   x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
                   azimuth_corrected, 0, intensity, time_stamp);
-              } else {
+              } else if (is_invalid_distance && idx.has_value()){
+                data.addPointWithIndex(
+                  x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+                  azimuth_corrected, 0, intensity, time_stamp, idx.value());
+              } else if (!is_invalid_distance && !idx.has_value()) {
                 data.addPoint(
                   x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
                   azimuth_corrected, distance, intensity, time_stamp);
+              } else {
+                data.addPointWithIndex(
+                  x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+                  azimuth_corrected, distance, intensity, time_stamp, idx.value());
               }
             }
           }

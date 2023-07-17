@@ -211,8 +211,9 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
   bool activate_xyziradt = velodyne_points_ex_pub_->get_subscription_count() > 0;
   bool activate_xyzir = velodyne_points_pub_->get_subscription_count() > 0;
 
+  const auto max_points_num = scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size();
   velodyne_pointcloud::OutputBuilder output_builder(
-    scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size(),
+    max_points_num,
     *scanMsg, activate_xyziradt, activate_xyzir);
 
   output_builder.set_extract_range(data_->getMinRange(), data_->getMaxRange());
@@ -230,12 +231,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     _overflow_buffer.pc->width = 0;
     _overflow_buffer.pc->height = 1;
 
-    RCLCPP_INFO(this->get_logger(), "packet size : %ld", scanMsg->packets.size());
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-    std::vector<velodyne_pointcloud::PointcloudXYZIRADT> all_packets_pc(
-      scanMsg->packets.size() - 1);
     std::vector<int> indicies(scanMsg->packets.size() - 1);
     for (size_t i = 0; i < scanMsg->packets.size() - 1; ++i) {
       indicies.at(i) = i;
@@ -243,67 +239,12 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 
     auto indexed_vec = ranges::view::zip(scanMsg->packets, indicies);
     std::for_each(std::execution::par, indexed_vec.begin(), indexed_vec.end(),
-                  [&](std::tuple<velodyne_msgs::msg::VelodynePacket&, int> scan_packet_tuple) {
-                    all_packets_pc.at(std::get<1>(scan_packet_tuple)).pc->points.reserve(data_->scansPerPacket());
-                    data_->unpack(std::get<0>(scan_packet_tuple), all_packets_pc.at(std::get<1>(scan_packet_tuple)));
-                  });
-
-    velodyne_pointcloud::PointcloudXYZIRADT combined_pc;
-    int pc_size = data_->scansPerPacket() * all_packets_pc.size();
-    combined_pc.pc->points.resize(pc_size);
-    combined_pc.pc->width = 1;
-    combined_pc.pc->height = pc_size;
-
-    auto indexed_all_pc = ranges::view::zip(all_packets_pc, indicies);
-    std::for_each(std::execution::par, indexed_all_pc.begin(), indexed_all_pc.end(),
-                  [&](std::tuple<velodyne_pointcloud::PointcloudXYZIRADT&, int> pc_tuple) {
-        for (size_t i = 0; i < std::get<0>(pc_tuple).pc->points.size(); ++i) {
-
-          const auto & point = std::get<0>(pc_tuple).pc->points.at(i);
-          size_t idx = std::get<1>(pc_tuple) * data_->scansPerPacket() + i ;
-          combined_pc.pc->points.at(idx) = point;
-
-        }
+      [&](std::tuple<velodyne_msgs::msg::VelodynePacket &, int> scan_packet_tuple) {
+        // Calculate index
+        const auto idx = std::get<1>(scan_packet_tuple) * data_->scansPerPacket() *  +
+                         _overflow_buffer.pc->points.size();
+        data_->unpack(std::get<0>(scan_packet_tuple), output_builder, idx);
       });
-
-    RCLCPP_INFO(this->get_logger(), "Combined pc size: %ld", combined_pc.pc->points.size());
-
-
-    std::chrono::steady_clock::time_point begin3 = std::chrono::steady_clock::now();
-    sensor_msgs::msg::PointCloud2::SharedPtr msg(new sensor_msgs::msg::PointCloud2);
-
-    pcl::toROSMsg(*combined_pc.pc,*msg);
-    msg->header.stamp = scanMsg->header.stamp;
-    msg->header.frame_id = scanMsg->header.frame_id;
-
-    velodyne_points_ex_pub_->publish(std::move(*msg));
-    std::chrono::steady_clock::time_point end3 = std::chrono::steady_clock::now();
-    double elapsed_time3 =
-      std::chrono::duration_cast<std::chrono::microseconds>(end3 - begin3).count();
-
-    RCLCPP_INFO(this->get_logger(), "Elapsed time conversion: %f", elapsed_time3);
-
-
-
-
-
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    double elapsed_time =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-
-    RCLCPP_INFO(this->get_logger(), "Elapsed time: %f", elapsed_time);
-
-
-    std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
-    // Unpack up until the last packet, which contains points over-running the scan cut point
-    for (size_t i = 0; i < scanMsg->packets.size() - 1; ++i) {
-      data_->unpack(scanMsg->packets[i], output_builder);
-    }
-    std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
-    double elapsed_time2 =
-      std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin2).count();
-
-    RCLCPP_INFO(this->get_logger(), "Elapsed time2: %f", elapsed_time2);
 
     // Split the points of the last packet between pointcloud and overflow buffer
     velodyne_pointcloud::PointcloudXYZIRADT last_packet_points;

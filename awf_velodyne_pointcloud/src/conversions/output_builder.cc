@@ -18,7 +18,7 @@ OutputBuilder::OutputBuilder(size_t output_max_points_num, const VelodyneScan & 
 
   if (xyziradt_activated_) {
     init_output_msg<PointXYZIRADT>(*output_xyziradt_, output_max_points_num, scan_msg);
-
+    point_step_xyziradt_ = output_xyziradt_->point_step;
     offsets_xyziradt_.x_offset = output_xyziradt_->fields[pcl::getFieldIndex(*output_xyziradt_, "x")].offset;
     offsets_xyziradt_.y_offset = output_xyziradt_->fields[pcl::getFieldIndex(*output_xyziradt_, "y")].offset;
     offsets_xyziradt_.z_offset = output_xyziradt_->fields[pcl::getFieldIndex(*output_xyziradt_, "z")].offset;
@@ -32,7 +32,7 @@ OutputBuilder::OutputBuilder(size_t output_max_points_num, const VelodyneScan & 
 
   if (xyzir_activated_) {
     init_output_msg<PointXYZIR>(*output_xyzir_, output_max_points_num, scan_msg);
-
+    point_step_xyzir_ = output_xyzir_->point_step;
     offsets_xyzir_.x_offset = output_xyzir_->fields[pcl::getFieldIndex(*output_xyzir_, "x")].offset;
     offsets_xyzir_.y_offset = output_xyzir_->fields[pcl::getFieldIndex(*output_xyzir_, "y")].offset;
     offsets_xyzir_.z_offset = output_xyzir_->fields[pcl::getFieldIndex(*output_xyzir_, "z")].offset;
@@ -60,7 +60,7 @@ std::unique_ptr<sensor_msgs::msg::PointCloud2> OutputBuilder::move_xyziradt_outp
   }
 
   output_xyziradt_->data.resize(output_xyziradt_data_size_);
-
+  output_xyziradt_->width = output_xyziradt_->data.size() / output_xyziradt_->point_step;
   double time_stamp = *reinterpret_cast<double *>(&output_xyziradt_->data[offsets_xyziradt_.time_stamp_offset]);
   auto stamp = rclcpp::Time(std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::duration<double>(time_stamp)).count());
@@ -149,6 +149,76 @@ void OutputBuilder::addPoint(
     output_xyzir_->width++;
     output_xyzir_->row_step += output_xyzir_->point_step;
   }
+}
+
+void OutputBuilder::addPointWithIndex(
+  const float & x, const float & y, const float & z,
+  const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
+  const float & distance, const float & intensity,
+  const double & time_stamp, const size_t & index){
+
+  // Needed for velodyne_convert_node logic.
+  last_azimuth = azimuth;
+
+  if (xyziradt_activated_ && !output_xyziradt_moved_ &&
+      min_range_ <= distance && distance <= max_range_) {
+
+    /* Slightly slower
+    auto &msg = *output_xyziradt_;
+    auto &sz = output_xyziradt_data_size_;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyziradt_.x_offset]) = x;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyziradt_.y_offset]) = y;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyziradt_.z_offset]) = z;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyziradt_.intensity_offset]) = intensity;
+    *reinterpret_cast<uint16_t *>(&msg.data[sz + offsets_xyziradt_.ring_offset]) = ring;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyziradt_.azimuth_offset]) = azimuth;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyziradt_.distance_offset]) = distance;
+    *reinterpret_cast<uint8_t *>(&msg.data[sz + offsets_xyziradt_.return_type_offset]) = return_type;
+    *reinterpret_cast<double *>(&msg.data[sz + offsets_xyziradt_.time_stamp_offset]) = time_stamp;
+    */
+
+    PointXYZIRADT *point = (PointXYZIRADT *) &output_xyziradt_->data[index];
+    point->x = x;
+    point->y = y;
+    point->z = z;
+    point->intensity = intensity;
+    point->ring = ring;
+    point->azimuth = azimuth;
+    point->distance = distance;
+    point->return_type = return_type;
+    point->time_stamp = time_stamp;
+
+    output_xyziradt_data_size_ += output_xyziradt_->point_step;
+    output_xyziradt_->width++;
+    output_xyziradt_->row_step += output_xyziradt_->point_step;
+  }
+
+  if (xyzir_activated_ && !output_xyzir_moved_ &&
+      min_range_ <= distance && distance <= max_range_) {
+    if (first_timestamp_ == 0) first_timestamp_ = time_stamp;
+
+    /* Slightly slower
+    auto &msg = *output_xyzir_;
+    auto &sz = output_xyzir_data_size_;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyzir_.x_offset]) = x;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyzir_.y_offset]) = y;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyzir_.z_offset]) = z;
+    *reinterpret_cast<float *>(&msg.data[sz + offsets_xyzir_.intensity_offset]) = intensity;
+    *reinterpret_cast<uint16_t *>(&msg.data[sz + offsets_xyzir_.ring_offset]) = ring;
+    */
+
+    PointXYZIR *point = (PointXYZIR *) &output_xyzir_->data[output_xyzir_data_size_];
+    point->x = x;
+    point->y = y;
+    point->z = z;
+    point->intensity = intensity;
+    point->ring = ring;
+
+    output_xyzir_data_size_ += output_xyzir_->point_step;
+    output_xyzir_->width++;
+    output_xyzir_->row_step += output_xyzir_->point_step;
+  }
+
 }
 
 } // namespace velodyne_pointcloud
