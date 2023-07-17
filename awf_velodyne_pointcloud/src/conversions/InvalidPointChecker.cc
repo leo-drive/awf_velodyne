@@ -17,10 +17,10 @@ bool InvalidPointChecker::is_invalid(const uint16_t & ring, const uint16_t & azi
     return false;
   }
 
-  const auto iter = std::find(invalid_rings_.begin(), invalid_rings_.end(), ring);
-  if (iter != invalid_rings_.end()) {
-    const auto index = iter - invalid_rings_.begin();
-    if (azimuth >= invalid_angles_start_[index] && azimuth <= invalid_angles_end_[index]) {
+  for (size_t i = 0; i < invalid_rings_.size(); ++i) {
+    if (
+      invalid_rings_.at(i) == ring && azimuth >= invalid_angles_start_[i] &&
+      azimuth <= invalid_angles_end_[i]) {
       return true;
     }
   }
