@@ -52,6 +52,9 @@
 #include <velodyne_pointcloud/point_types.h>
 
 #include <velodyne_pointcloud/datacontainerbase.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <velodyne_pointcloud/output_builder.h>
+
 
 namespace velodyne_rawdata
 {
@@ -193,8 +196,10 @@ public:
   int setupOffline(std::string calibration_file, double max_range_, double min_range_);
 
   void unpack(
-    const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data,
-    std::optional<size_t> idx = std::nullopt, size_t offset = 0);
+    const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data);
+  void unpack(
+    const velodyne_msgs::msg::VelodynePacket & pkt, velodyne_pointcloud::OutputBuilder & data, size_t idx,
+    size_t offset);
 
   void setParameters(double min_range, double max_range, double view_direction, double view_width);
 
@@ -232,12 +237,16 @@ private:
   float vls_128_laser_azimuth_cache[16];
 
   /** add private function to handle the VLP16 **/
-  void unpack_vlp16(const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data,
-                    std::optional<size_t> idx = std::nullopt, size_t offset = 0);
+  void unpack_vlp16(const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data);
+  void unpack_vlp16(
+    const velodyne_msgs::msg::VelodynePacket & pkt, velodyne_pointcloud::OutputBuilder & data,
+    size_t idx, size_t offset);
 
   /** add private function to handle the VLS128 **/
-  void unpack_vls128(const velodyne_msgs::msg::VelodynePacket &pkt, DataContainerBase &data,
-                     std::optional<size_t> idx = std::nullopt, size_t offset = 0);
+  void unpack_vls128(const velodyne_msgs::msg::VelodynePacket &pkt, DataContainerBase &data);
+  void unpack_vls128(
+    const velodyne_msgs::msg::VelodynePacket & pkt, velodyne_pointcloud::OutputBuilder & data,
+    size_t idx, size_t offset);
 
   /** in-line test whether a point is in range */
   bool pointInRange(float range)

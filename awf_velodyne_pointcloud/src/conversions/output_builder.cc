@@ -157,7 +157,7 @@ void OutputBuilder::addPointWithIndex(
   const float & x, const float & y, const float & z,
   const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
   const float & distance, const float & intensity,
-  const double & time_stamp, const size_t & index, const int & scansPerPacket, const size_t & offset){
+  const double & time_stamp, const size_t & index, const int & scansPerPacket, const size_t & offset, const size_t & point_index){
 
   // Needed for velodyne_convert_node logic.
   last_azimuth = azimuth;
@@ -179,7 +179,7 @@ void OutputBuilder::addPointWithIndex(
     *reinterpret_cast<double *>(&msg.data[sz + offsets_xyziradt_.time_stamp_offset]) = time_stamp;
     */
 
-    PointXYZIRADT *point = (PointXYZIRADT *) &output_xyziradt_->data[(index * scansPerPacket + offset) * output_xyziradt_->point_step];
+    PointXYZIRADT *point = (PointXYZIRADT *) &output_xyziradt_->data[(index * scansPerPacket + offset + point_index) * output_xyziradt_->point_step];
     point->x = x;
     point->y = y;
     point->z = z;
@@ -209,7 +209,7 @@ void OutputBuilder::addPointWithIndex(
     *reinterpret_cast<uint16_t *>(&msg.data[sz + offsets_xyzir_.ring_offset]) = ring;
     */
 
-    PointXYZIR *point = (PointXYZIR *) &output_xyzir_->data[(index * scansPerPacket + offset) * output_xyziradt_->point_step];
+    PointXYZIR *point = (PointXYZIR *) &output_xyzir_->data[(index * scansPerPacket + offset + point_index) * output_xyziradt_->point_step];
     point->x = x;
     point->y = y;
     point->z = z;

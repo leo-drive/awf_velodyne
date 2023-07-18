@@ -65,7 +65,8 @@ class OutputBuilder : public velodyne_rawdata::DataContainerBase {
     msg.header.stamp = scan_msg.packets[0].stamp;
 
     msg.height = 1;
-    msg.width = 0;
+//    msg.width = 0;
+    msg.width = output_max_points_num;
 
     if (std::is_same<PointT, PointXYZIRADT>::value) pcl_conversions::fromPCL(xyziradt_fields_, msg.fields);
     if (std::is_same<PointT, PointXYZIR>::value) pcl_conversions::fromPCL(xyzir_fields_, msg.fields);
@@ -104,7 +105,7 @@ public:
     const float & x, const float & y, const float & z,
     const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
     const float & distance, const float & intensity,
-    const double & time_stamp, const size_t & index, const int & scansPerPacket, const size_t & offset);
+    const double & time_stamp, const size_t & index, const int & scansPerPacket, const size_t & offset, const size_t & point_index);
 };
 
 } // namespace velodyne_pointcloud

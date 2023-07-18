@@ -212,8 +212,8 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
   bool activate_xyzir = velodyne_points_pub_->get_subscription_count() > 0;
 
   const auto max_points_num = scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size();
-  RCLCPP_INFO_STREAM(this->get_logger(), "max_points_num:\t" << max_points_num);
-  RCLCPP_INFO_STREAM(this->get_logger(), "max_size:\t" << max_points_num * 48);
+//  RCLCPP_INFO_STREAM(this->get_logger(), "max_points_num:\t" << max_points_num);
+//  RCLCPP_INFO_STREAM(this->get_logger(), "max_size:\t" << max_points_num * 48);
   velodyne_pointcloud::OutputBuilder output_builder(
     max_points_num,
     *scanMsg, activate_xyziradt, activate_xyzir);
