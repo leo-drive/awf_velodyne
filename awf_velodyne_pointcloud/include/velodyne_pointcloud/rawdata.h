@@ -194,7 +194,7 @@ public:
 
   void unpack(
     const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data,
-    std::optional<size_t> idx = std::nullopt);
+    std::optional<size_t> idx = std::nullopt, size_t offset = 0);
 
   void setParameters(double min_range, double max_range, double view_direction, double view_width);
 
@@ -233,11 +233,11 @@ private:
 
   /** add private function to handle the VLP16 **/
   void unpack_vlp16(const velodyne_msgs::msg::VelodynePacket & pkt, DataContainerBase & data,
-                    std::optional<size_t> idx = std::nullopt);
+                    std::optional<size_t> idx = std::nullopt, size_t offset = 0);
 
   /** add private function to handle the VLS128 **/
   void unpack_vls128(const velodyne_msgs::msg::VelodynePacket &pkt, DataContainerBase &data,
-                     std::optional<size_t> idx = std::nullopt);
+                     std::optional<size_t> idx = std::nullopt, size_t offset = 0);
 
   /** in-line test whether a point is in range */
   bool pointInRange(float range)

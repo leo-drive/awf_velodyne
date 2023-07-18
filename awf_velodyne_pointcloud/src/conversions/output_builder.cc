@@ -59,7 +59,9 @@ std::unique_ptr<sensor_msgs::msg::PointCloud2> OutputBuilder::move_xyziradt_outp
     return std::unique_ptr<sensor_msgs::msg::PointCloud2>(nullptr);
   }
 
-  output_xyziradt_->data.resize(output_xyziradt_data_size_);
+//  output_xyziradt_->data.resize(output_xyziradt_data_size_);
+//  output_xyziradt_->data.shrink_to_fit();
+
   output_xyziradt_->width = output_xyziradt_->data.size() / output_xyziradt_->point_step;
   double time_stamp = *reinterpret_cast<double *>(&output_xyziradt_->data[offsets_xyziradt_.time_stamp_offset]);
   auto stamp = rclcpp::Time(std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -155,7 +157,7 @@ void OutputBuilder::addPointWithIndex(
   const float & x, const float & y, const float & z,
   const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
   const float & distance, const float & intensity,
-  const double & time_stamp, const size_t & index){
+  const double & time_stamp, const size_t & index, const int & scansPerPacket, const size_t & offset){
 
   // Needed for velodyne_convert_node logic.
   last_azimuth = azimuth;
@@ -177,7 +179,7 @@ void OutputBuilder::addPointWithIndex(
     *reinterpret_cast<double *>(&msg.data[sz + offsets_xyziradt_.time_stamp_offset]) = time_stamp;
     */
 
-    PointXYZIRADT *point = (PointXYZIRADT *) &output_xyziradt_->data[index];
+    PointXYZIRADT *point = (PointXYZIRADT *) &output_xyziradt_->data[(index * scansPerPacket + offset) * output_xyziradt_->point_step];
     point->x = x;
     point->y = y;
     point->z = z;
@@ -207,7 +209,7 @@ void OutputBuilder::addPointWithIndex(
     *reinterpret_cast<uint16_t *>(&msg.data[sz + offsets_xyzir_.ring_offset]) = ring;
     */
 
-    PointXYZIR *point = (PointXYZIR *) &output_xyzir_->data[output_xyzir_data_size_];
+    PointXYZIR *point = (PointXYZIR *) &output_xyzir_->data[(index * scansPerPacket + offset) * output_xyziradt_->point_step];
     point->x = x;
     point->y = y;
     point->z = z;

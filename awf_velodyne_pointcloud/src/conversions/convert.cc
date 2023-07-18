@@ -212,6 +212,8 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
   bool activate_xyzir = velodyne_points_pub_->get_subscription_count() > 0;
 
   const auto max_points_num = scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size();
+  RCLCPP_INFO_STREAM(this->get_logger(), "max_points_num:\t" << max_points_num);
+  RCLCPP_INFO_STREAM(this->get_logger(), "max_size:\t" << max_points_num * 48);
   velodyne_pointcloud::OutputBuilder output_builder(
     max_points_num,
     *scanMsg, activate_xyziradt, activate_xyzir);
@@ -227,6 +229,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
         point.intensity, point.time_stamp);
     }
     // Reset overflow buffer
+    const auto offset = _overflow_buffer.pc->points.size();
     _overflow_buffer.pc->points.clear();
     _overflow_buffer.pc->width = 0;
     _overflow_buffer.pc->height = 1;
@@ -241,9 +244,9 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     std::for_each(std::execution::par, indexed_vec.begin(), indexed_vec.end(),
       [&](std::tuple<velodyne_msgs::msg::VelodynePacket &, int> scan_packet_tuple) {
         // Calculate index
-        const auto idx = std::get<1>(scan_packet_tuple) * data_->scansPerPacket() *  +
-                         _overflow_buffer.pc->points.size();
-        data_->unpack(std::get<0>(scan_packet_tuple), output_builder, idx);
+//        const auto idx = std::get<1>(scan_packet_tuple) * data_->scansPerPacket() +
+//                         _overflow_buffer.pc->points.size();
+        data_->unpack(std::get<0>(scan_packet_tuple), output_builder, std::get<1>(scan_packet_tuple), offset);
       });
 
     // Split the points of the last packet between pointcloud and overflow buffer

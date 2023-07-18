@@ -104,7 +104,7 @@ public:
     const float & x, const float & y, const float & z,
     const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
     const float & distance, const float & intensity,
-    const double & time_stamp, const size_t & index);
+    const double & time_stamp, const size_t & index, const int & scansPerPacket, const size_t & offset);
 };
 
 } // namespace velodyne_pointcloud
