@@ -77,7 +77,8 @@ std::unique_ptr<sensor_msgs::msg::PointCloud2> OutputBuilder::move_xyzir_output(
     return std::unique_ptr<sensor_msgs::msg::PointCloud2>(nullptr);
   }
 
-  output_xyzir_->data.resize(output_xyzir_data_size_);
+//  output_xyzir_->data.resize(output_xyzir_data_size_);
+  output_xyzir_->width = output_xyzir_->data.size() / output_xyzir_->point_step;
   auto stamp = rclcpp::Time(std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::duration<double>(first_timestamp_)).count());
   output_xyzir_->header.stamp = stamp;
@@ -209,7 +210,7 @@ void OutputBuilder::addPointWithIndex(
     *reinterpret_cast<uint16_t *>(&msg.data[sz + offsets_xyzir_.ring_offset]) = ring;
     */
 
-    PointXYZIR *point = (PointXYZIR *) &output_xyzir_->data[(index * scansPerPacket + offset + point_index) * output_xyziradt_->point_step];
+    PointXYZIR *point = (PointXYZIR *) &output_xyzir_->data[(index * scansPerPacket + offset + point_index) * output_xyzir_->point_step];
     point->x = x;
     point->y = y;
     point->z = z;
