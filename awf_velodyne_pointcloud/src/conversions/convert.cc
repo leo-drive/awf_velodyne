@@ -134,6 +134,33 @@ Convert::Convert(const rclcpp::NodeOptions & options)
     invalid_intensity_array_.at(i) = static_cast<float>(invalid_intensity_double[i]);
   }
 
+  const bool invalid_point_remove = this->declare_parameter("invalid_point_remove", false);
+  if (invalid_point_remove) {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Invalid point remove is active.");
+  } else {
+    RCLCPP_INFO_STREAM(this->get_logger(), "Invalid point remove is not active.");
+  }
+
+  const std::vector<int64_t> invalid_rings = this->declare_parameter<std::vector<int64_t>>("invalid_rings");
+  RCLCPP_INFO_STREAM(this->get_logger(), "Invalid rings: ");
+  for (const auto & invalid_ring : invalid_rings) {
+    RCLCPP_INFO_STREAM(this->get_logger(), invalid_ring << " ");
+  }
+
+  const std::vector<int64_t> invalid_angles_start = this->declare_parameter<std::vector<int64_t>>("invalid_angles_start");
+  RCLCPP_INFO_STREAM(this->get_logger(), "Invalid angles start: ");
+  for (const auto & invalid_angle_start : invalid_angles_start) {
+    RCLCPP_INFO_STREAM(this->get_logger(), invalid_angle_start << " ");
+  }
+
+  const std::vector<int64_t> invalid_angles_end = this->declare_parameter<std::vector<int64_t>>("invalid_angles_end");
+  RCLCPP_INFO_STREAM(this->get_logger(), "Invalid angles end: ");
+  for (const auto & invalid_angle_end : invalid_angles_end) {
+    RCLCPP_INFO_STREAM(this->get_logger(), invalid_angle_end << " ");
+  }
+
+  invalid_point_checker_.emplace(invalid_point_remove, invalid_rings, invalid_angles_start, invalid_angles_end);
+
   // advertise
   velodyne_points_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("velodyne_points", rclcpp::SensorDataQoS());
   velodyne_points_ex_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("velodyne_points_ex", rclcpp::SensorDataQoS());
@@ -202,7 +229,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
 
   velodyne_pointcloud::OutputBuilder output_builder(
       scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size(), *scanMsg,
-      activate_xyziradt, activate_xyzir);
+      activate_xyziradt, activate_xyzir, *invalid_point_checker_);
 
   output_builder.set_extract_range(data_->getMinRange(), data_->getMaxRange());
 

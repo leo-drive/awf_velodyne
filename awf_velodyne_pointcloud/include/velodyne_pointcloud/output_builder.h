@@ -8,6 +8,7 @@
 #include <velodyne_pointcloud/pointcloudXYZIRADT.h>
 #include <velodyne_pointcloud/pointcloudXYZIR.h>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
+#include "velodyne_pointcloud/InvalidPointChecker.h"
 
 namespace velodyne_pointcloud {
 
@@ -25,6 +26,8 @@ class OutputBuilder : public velodyne_rawdata::DataContainerBase {
   size_t output_xyzir_data_size_ = 0;
   bool output_xyzir_moved_ = false;
   bool xyzir_activated_ = false;
+
+  InvalidPointChecker invalid_point_checker_;
 
   double min_range_ = 0;
   double max_range_ = DBL_MAX;
@@ -83,7 +86,9 @@ public:
   // Needed for velodyne_convert_node logic
   uint16_t last_azimuth;
 
-  OutputBuilder(size_t output_max_points_num, const VelodyneScan & scan_msg, bool activate_xyziradt, bool activate_xyzir);
+  OutputBuilder(
+    size_t output_max_points_num, const VelodyneScan & scan_msg, bool activate_xyziradt,
+    bool activate_xyzir, InvalidPointChecker & invalid_point_checker);
 
   void set_extract_range(double min_range, double max_range);
 
