@@ -156,4 +156,26 @@ void OutputBuilder::addPoint(
   }
 }
 
+void OutputBuilder::addOutputBuilder(const OutputBuilder & other)
+{
+  last_azimuth = other.last_azimuth;
+  if (other.xyziradt_activated_ && !output_xyziradt_moved_) {
+    memcpy(
+      &output_xyziradt_->data[output_xyziradt_data_size_], &other.output_xyziradt_->data[0],
+      other.output_xyziradt_data_size_);
+    output_xyziradt_data_size_ += other.output_xyziradt_data_size_;
+    output_xyziradt_->width += other.output_xyziradt_->width;
+    output_xyziradt_->row_step += other.output_xyziradt_->row_step;
+  }
+
+  if (other.xyzir_activated_ && !output_xyzir_moved_) {
+    memcpy(
+      &output_xyzir_->data[output_xyzir_data_size_], &other.output_xyzir_->data[0],
+      other.output_xyzir_data_size_);
+    output_xyzir_data_size_ += other.output_xyzir_data_size_;
+    output_xyzir_->width += other.output_xyzir_->width;
+    output_xyzir_->row_step += other.output_xyzir_->row_step;
+  }
+}
+
 } // namespace velodyne_pointcloud

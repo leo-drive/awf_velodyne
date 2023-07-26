@@ -19,9 +19,13 @@
 #include <velodyne_pointcloud/pointcloudXYZIRADT.h>
 
 #include <yaml-cpp/yaml.h>
+#include <range/v3/view/zip.hpp>
 
 #include <velodyne_pointcloud/output_builder.h>
 #include <velodyne_pointcloud/func.h>
+
+#include <algorithm>
+#include <execution>
 
 namespace velodyne_pointcloud
 {
@@ -250,9 +254,26 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     _overflow_buffer.pc->width = 0;
     _overflow_buffer.pc->height = 1;
 
-    // Unpack up until the last packet, which contains points over-running the scan cut point
+    std::vector<velodyne_pointcloud::OutputBuilder> output_builders;
+    std::vector<int> indicies;
     for (size_t i = 0; i < scanMsg->packets.size() - 1; ++i) {
-      data_->unpack(scanMsg->packets[i], output_builder);
+      output_builders.emplace_back(
+        data_->scansPerPacket(), *scanMsg, activate_xyziradt, activate_xyzir, *invalid_point_checker_);
+      output_builders.at(i).set_extract_range(data_->getMinRange(), data_->getMaxRange());
+      indicies.emplace_back(i);
+    }
+
+    auto indexed_vec = ranges::view::zip(scanMsg->packets, indicies);
+
+    std::for_each(
+      std::execution::par, indexed_vec.begin(), indexed_vec.end(),
+      [&](std::tuple<velodyne_msgs::msg::VelodynePacket &, int> scan_packet_tuple) {
+        data_->unpack(
+          std::get<0>(scan_packet_tuple), output_builders.at(std::get<1>(scan_packet_tuple)));
+      });
+
+    for (size_t i = 0; i < output_builders.size(); ++i) {
+      output_builder.addOutputBuilder(output_builders.at(i));
     }
 
     // Split the points of the last packet between pointcloud and overflow buffer

@@ -103,6 +103,9 @@ public:
     const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
     const float & distance, const float & intensity,
     const double & time_stamp) override;
+
+  void addOutputBuilder(const OutputBuilder & other);
+
 };
 
 } // namespace velodyne_pointcloud
