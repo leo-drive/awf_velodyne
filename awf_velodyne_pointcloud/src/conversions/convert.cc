@@ -255,11 +255,12 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     _overflow_buffer.pc->height = 1;
 
     std::vector<velodyne_pointcloud::OutputBuilder> output_builders;
-    std::vector<int> indicies(scanMsg->packets.size() - 1);
+    std::vector<int> indicies;
     for (size_t i = 0; i < scanMsg->packets.size() - 1; ++i) {
       output_builders.emplace_back(
         data_->scansPerPacket(), *scanMsg, activate_xyziradt, activate_xyzir, *invalid_point_checker_);
-      indicies.at(i) = i;
+      output_builders.at(i).set_extract_range(data_->getMinRange(), data_->getMaxRange());
+      indicies.emplace_back(i);
     }
 
     auto indexed_vec = ranges::view::zip(scanMsg->packets, indicies);

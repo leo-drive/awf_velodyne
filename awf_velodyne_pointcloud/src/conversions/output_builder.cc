@@ -158,6 +158,7 @@ void OutputBuilder::addPoint(
 
 void OutputBuilder::addOutputBuilder(const OutputBuilder & other)
 {
+  last_azimuth = other.last_azimuth;
   if (other.xyziradt_activated_ && !output_xyziradt_moved_) {
     memcpy(
       &output_xyziradt_->data[output_xyziradt_data_size_], &other.output_xyziradt_->data[0],
