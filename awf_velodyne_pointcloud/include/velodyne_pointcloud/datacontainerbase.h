@@ -26,9 +26,9 @@ class DataContainerBase
 public:
   virtual void addPoint(
     const float & x, const float & y, const float & z,
-    const uint8_t & return_type, const uint16_t & ring,
-    const uint16_t & azimuth, const float & distance, const float & intensity,
-    const double & time_stamp) = 0;
+    const uint8_t & return_type, const uint16_t & channel, const uint16_t & azimuth, const uint16_t & elevation,
+    const float & distance, const float & intensity,    
+    const double & time_stamp)  = 0;
 };
 }  // namespace velodyne_rawdata
 #endif  //__DATACONTAINERBASE_H

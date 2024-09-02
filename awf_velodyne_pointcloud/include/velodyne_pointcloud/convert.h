@@ -38,7 +38,7 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
 
-#include <velodyne_pointcloud/pointcloudXYZIRADT.h>
+#include <velodyne_pointcloud/pointcloudXYZIRCAEDT.h>
 #include <velodyne_pointcloud/rawdata.h>
 
 namespace velodyne_pointcloud
@@ -62,13 +62,14 @@ private:
   rclcpp::Subscription<velodyne_msgs::msg::VelodyneScan>::SharedPtr velodyne_scan_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr velodyne_points_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr velodyne_points_ex_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr velodyne_points_base_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_pub_;
 
   // tf2_ros::Buffer tf2_buffer_;
   // tf2_ros::TransformListener tf2_listener_;
 
   // Buffer for overflow points
-  velodyne_pointcloud::PointcloudXYZIRADT _overflow_buffer;
+  velodyne_pointcloud::PointcloudXYZIRCAEDT _overflow_buffer;
   /// Pointer to dynamic reconfigure service srv_
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 

@@ -16,7 +16,7 @@
 #include <velodyne_pointcloud/convert.h>
 
 #include <pcl_conversions/pcl_conversions.h>
-#include <velodyne_pointcloud/pointcloudXYZIRADT.h>
+#include <velodyne_pointcloud/pointcloudXYZIRCAEDT.h>
 
 #include <yaml-cpp/yaml.h>
 
@@ -137,6 +137,7 @@ Convert::Convert(const rclcpp::NodeOptions & options)
   // advertise
   velodyne_points_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("velodyne_points", rclcpp::SensorDataQoS());
   velodyne_points_ex_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("velodyne_points_ex", rclcpp::SensorDataQoS());
+  velodyne_points_base_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("velodyne_points_base", rclcpp::SensorDataQoS());
   marker_array_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("velodyne_model_marker", 1);
   using std::placeholders::_1;
   set_param_res_ = this->add_on_set_parameters_callback(
@@ -197,21 +198,22 @@ rcl_interfaces::msg::SetParametersResult Convert::paramCallback(const std::vecto
 /** @brief Callback for raw scan messages. */
 void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scanMsg)
 {
-  bool activate_xyziradt = velodyne_points_ex_pub_->get_subscription_count() > 0;
+  bool activate_xyzircaedt = velodyne_points_ex_pub_->get_subscription_count() > 0;
+  bool activate_xyziradt = velodyne_points_base_pub_->get_subscription_count() > 0;
   bool activate_xyzir = velodyne_points_pub_->get_subscription_count() > 0;
 
   velodyne_pointcloud::OutputBuilder output_builder(
       scanMsg->packets.size() * data_->scansPerPacket() + _overflow_buffer.pc->points.size(), *scanMsg,
-      activate_xyziradt, activate_xyzir);
+      activate_xyziradt, activate_xyzir, activate_xyzircaedt);
 
   output_builder.set_extract_range(data_->getMinRange(), data_->getMaxRange());
 
-  if (activate_xyziradt || activate_xyzir) {
+  if (activate_xyziradt || activate_xyzir || activate_xyzircaedt) {
     // Add the overflow buffer points
     for (size_t i = 0; i < _overflow_buffer.pc->points.size(); ++i) {
       auto &point = _overflow_buffer.pc->points[i];
       output_builder.addPoint(point.x, point.y, point.z, point.return_type,
-          point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
+          point.channel, point.azimuth, point.elevation, point.distance, point.intensity, point.time_stamp);
     }
     // Reset overflow buffer
     _overflow_buffer.pc->points.clear();
@@ -224,7 +226,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     }
 
     // Split the points of the last packet between pointcloud and overflow buffer
-    velodyne_pointcloud::PointcloudXYZIRADT last_packet_points;
+    velodyne_pointcloud::PointcloudXYZIRCAEDT last_packet_points;
     last_packet_points.pc->points.reserve(data_->scansPerPacket());
     data_->unpack(scanMsg->packets.back(), last_packet_points);
 
@@ -245,7 +247,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
       if ((phase_diff > 18000) || keep_all) {
         auto &point = last_packet_points.pc->points[i];
         output_builder.addPoint(point.x, point.y, point.z, point.return_type,
-            point.ring, point.azimuth, point.distance, point.intensity, point.time_stamp);
+            point.channel, point.azimuth, point.elevation, point.distance, point.intensity, point.time_stamp);
       } else {
         _overflow_buffer.pc->points.push_back(last_packet_points.pc->points[i]);
       }
@@ -258,6 +260,11 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
     _overflow_buffer.pc->height = 1;
   }
 
+  if (output_builder.xyzircaedt_is_activated()) {
+    auto msg = output_builder.move_xyzircaedt_output();
+    if (msg->data.size() == 0) msg->header.stamp = scanMsg->packets[0].stamp;
+    velodyne_points_ex_pub_->publish(std::move(msg));
+  }
 
   if (output_builder.xyzir_is_activated()) {
     auto msg = output_builder.move_xyzir_output();
@@ -268,7 +275,7 @@ void Convert::processScan(const velodyne_msgs::msg::VelodyneScan::SharedPtr scan
   if (output_builder.xyziradt_is_activated()) {
     auto msg = output_builder.move_xyziradt_output();
     if (msg->data.size() == 0) msg->header.stamp = scanMsg->packets[0].stamp;
-    velodyne_points_ex_pub_->publish(std::move(msg));
+    velodyne_points_base_pub_->publish(std::move(msg));
   }
 
   if (marker_array_pub_->get_subscription_count() > 0) {

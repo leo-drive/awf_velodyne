@@ -367,12 +367,12 @@ namespace velodyne_rawdata
           if (is_invalid_distance) {
             data.addPoint(
               x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-              raw->blocks[i].rotation, 0,
+              raw->blocks[i].rotation, 0, 0,
               intensity, time_stamp);
           } else {
             data.addPoint(
               x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-              raw->blocks[i].rotation, distance,
+              raw->blocks[i].rotation, 0, distance,
               intensity, time_stamp);
           }
         }
@@ -557,11 +557,11 @@ namespace velodyne_rawdata
                 if (is_invalid_distance) {
                   data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                    azimuth_corrected, 0, intensity, time_stamp);
+                    azimuth_corrected, 0, 0, intensity, time_stamp);
                 } else {
                   data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                    azimuth_corrected, distance, intensity, time_stamp);
+                    azimuth_corrected, 0, distance, intensity, time_stamp);
                 }
               }
             }
@@ -766,12 +766,12 @@ namespace velodyne_rawdata
               }
               if (is_invalid_distance) {
                 data.addPoint(
-                  x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                  azimuth_corrected, 0, intensity, time_stamp);
+                    x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+                    azimuth_corrected, 0, 0, intensity, time_stamp);
               } else {
-                data.addPoint(
-                  x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                  azimuth_corrected, distance, intensity, time_stamp);
+                  data.addPoint(
+                    x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
+                    azimuth_corrected, 0, distance, intensity, time_stamp);
               }
             }
           }

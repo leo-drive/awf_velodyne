@@ -5,6 +5,7 @@
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <velodyne_pointcloud/datacontainerbase.h>
+#include <velodyne_pointcloud/pointcloudXYZIRCAEDT.h>
 #include <velodyne_pointcloud/pointcloudXYZIRADT.h>
 #include <velodyne_pointcloud/pointcloudXYZIR.h>
 #include <velodyne_msgs/msg/velodyne_scan.hpp>
@@ -12,6 +13,7 @@
 namespace velodyne_pointcloud {
 
 class OutputBuilder : public velodyne_rawdata::DataContainerBase {
+  using PointXYZIRCAEDT = velodyne_pointcloud::PointXYZIRCAEDT;
   using PointXYZIRADT = velodyne_pointcloud::PointXYZIRADT;
   using PointXYZIR = velodyne_pointcloud::PointXYZIR;
   using VelodyneScan = velodyne_msgs::msg::VelodyneScan;
@@ -26,8 +28,26 @@ class OutputBuilder : public velodyne_rawdata::DataContainerBase {
   bool output_xyzir_moved_ = false;
   bool xyzir_activated_ = false;
 
+  std::unique_ptr<sensor_msgs::msg::PointCloud2> output_xyzircaedt_;
+  size_t output_xyzircaedt_data_size_ = 0;
+  bool output_xyzircaedt_moved_ = false;
+  bool xyzircaedt_activated_ = false;
+  
   double min_range_ = 0;
   double max_range_ = DBL_MAX;
+
+  struct OffsetsXYZIRCAEDT {
+    uint32_t x_offset;
+    uint32_t y_offset;
+    uint32_t z_offset;
+    uint32_t intensity_offset;
+    uint32_t channel_offset;
+    uint32_t azimuth_offset;
+    uint32_t elevation_offset;
+    uint32_t distance_offset;
+    uint32_t return_type_offset;
+    uint32_t time_stamp_offset;
+  } offsets_xyzircaedt_;
 
   struct OffsetsXYZIRADT {
     uint32_t x_offset;
@@ -49,6 +69,7 @@ class OutputBuilder : public velodyne_rawdata::DataContainerBase {
     uint32_t ring_offset;
   } offsets_xyzir_;
 
+  std::vector<pcl::PCLPointField> xyzircaedt_fields_;
   std::vector<pcl::PCLPointField> xyziradt_fields_;
   std::vector<pcl::PCLPointField> xyzir_fields_;
 
@@ -67,6 +88,7 @@ class OutputBuilder : public velodyne_rawdata::DataContainerBase {
     msg.height = 1;
     msg.width = 0;
 
+    if (std::is_same<PointT, PointXYZIRCAEDT>::value) pcl_conversions::fromPCL(xyzircaedt_fields_, msg.fields);
     if (std::is_same<PointT, PointXYZIRADT>::value) pcl_conversions::fromPCL(xyziradt_fields_, msg.fields);
     if (std::is_same<PointT, PointXYZIR>::value) pcl_conversions::fromPCL(xyzir_fields_, msg.fields);
 
@@ -83,20 +105,23 @@ public:
   // Needed for velodyne_convert_node logic
   uint16_t last_azimuth;
 
-  OutputBuilder(size_t output_max_points_num, const VelodyneScan & scan_msg, bool activate_xyziradt, bool activate_xyzir);
+  OutputBuilder(size_t output_max_points_num, const VelodyneScan & scan_msg, bool activate_xyziradt, bool activate_xyzir, bool activate_xyzircaedt);
 
   void set_extract_range(double min_range, double max_range);
 
+
+  bool xyzircaedt_is_activated();
   bool xyziradt_is_activated();
   bool xyzir_is_activated();
 
+  std::unique_ptr<sensor_msgs::msg::PointCloud2> move_xyzircaedt_output();
   std::unique_ptr<sensor_msgs::msg::PointCloud2> move_xyziradt_output();
   std::unique_ptr<sensor_msgs::msg::PointCloud2> move_xyzir_output();
 
   virtual void addPoint(
     const float & x, const float & y, const float & z,
-    const uint8_t & return_type, const uint16_t & ring, const uint16_t & azimuth,
-    const float & distance, const float & intensity,
+    const uint8_t & return_type, const uint16_t & channel, const uint16_t & azimuth, const uint16_t & elevation,
+    const float & distance, const float & intensity,    
     const double & time_stamp) override;
 };
 
