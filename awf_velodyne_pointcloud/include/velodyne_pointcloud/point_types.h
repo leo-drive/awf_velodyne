@@ -21,6 +21,20 @@
 
 namespace velodyne_pointcloud
 {
+struct PointXYZIRCAEDT
+{
+  float x;
+  float y;
+  float z;
+  std::uint8_t intensity;
+  std::uint8_t return_type;
+  std::uint16_t channel;
+  float azimuth;
+  float elevation;
+  float distance;
+  std::uint32_t time_stamp;  
+};
+
 struct PointXYZIR
 {
   PCL_ADD_POINT4D;
@@ -42,6 +56,13 @@ struct PointXYZIRADT
 } EIGEN_ALIGN16;
 
 }  // namespace velodyne_pointcloud
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(
+  velodyne_pointcloud::PointXYZIRCAEDT,
+  (float, x, x)(float, y, y)(float, z, z)(std::uint8_t, intensity, intensity)(
+    std::uint8_t, return_type,
+    return_type)(std::uint16_t, channel, channel)(float, azimuth, azimuth)(
+    float, elevation, elevation)(float, distance, distance)(std::uint32_t, time_stamp, time_stamp))
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(
   velodyne_pointcloud::PointXYZIR,

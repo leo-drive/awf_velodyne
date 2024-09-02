@@ -26,6 +26,8 @@
 #include <tf2_ros/transform_listener.h>
 
 #include <velodyne_pointcloud/pointcloudXYZIR.h>
+#include <velodyne_pointcloud/pointcloudXYZIRCAEDT.h>
+
 #include <velodyne_pointcloud/rawdata.h>
 
 // include template implementations to transform a custom point cloud
