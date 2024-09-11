@@ -54,6 +54,7 @@ ament_auto_add_library(cloud_nodelet SHARED
   src/conversions/convert.cc
   src/conversions/pointcloudXYZIR.cc
   src/conversions/pointcloudXYZIRADT.cc
+  src/conversions/pointcloudXYZIRCAEDT.cc
   src/conversions/output_builder.cc
   src/conversions/func.cc
 )
@@ -75,6 +76,7 @@ ament_auto_add_library(interpolate_nodelet SHARED
   src/conversions/interpolate.cc
   src/conversions/pointcloudXYZIR.cc
   src/conversions/pointcloudXYZIRADT.cc
+  src/conversions/pointcloudXYZIRCAEDT.cc
   src/conversions/func.cc)
 target_link_libraries(interpolate_nodelet ${OpenCV_LIBS})
 
@@ -93,6 +95,7 @@ rclcpp_components_register_node(interpolate_nodelet
 ament_auto_add_library(transform_nodelet SHARED
   src/conversions/transform.cc
   src/conversions/pointcloudXYZIR.cc
+  src/conversions/pointcloudXYZIRCAEDT.cc
 )
 target_link_libraries(transform_nodelet ${YAML_CPP_LIBRARIES})
 
