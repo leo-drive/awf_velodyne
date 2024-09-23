@@ -557,11 +557,11 @@ namespace velodyne_rawdata
                 if (is_invalid_distance) {
                   data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                    azimuth_corrected, 0, 0, intensity, time_stamp);
+                    azimuth_corrected, sin_vert_angle, 0, intensity, time_stamp);
                 } else {
                   data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                    azimuth_corrected, 0, distance, intensity, time_stamp);
+                    azimuth_corrected, sin_vert_angle, distance, intensity, time_stamp);
                 }
               }
             }
@@ -767,11 +767,11 @@ namespace velodyne_rawdata
               if (is_invalid_distance) {
                 data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                    azimuth_corrected, 0, 0, intensity, time_stamp);
+                    azimuth_corrected, sin_vert_angle, 0, intensity, time_stamp);
               } else {
                   data.addPoint(
                     x_coord, y_coord, z_coord, return_type, corrections.laser_ring,
-                    azimuth_corrected, 0, distance, intensity, time_stamp);
+                    azimuth_corrected, sin_vert_angle, distance, intensity, time_stamp);
               }
             }
           }
