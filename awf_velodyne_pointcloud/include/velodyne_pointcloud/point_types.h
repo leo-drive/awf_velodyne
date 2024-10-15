@@ -32,7 +32,7 @@ struct PointXYZIRCAEDT
   float azimuth;
   float elevation;
   float distance;
-  std::uint32_t time_stamp;  
+  double time_stamp;  
 };
 
 struct PointXYZIR
